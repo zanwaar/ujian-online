@@ -11,6 +11,7 @@ func RunMigrations(db *gorm.DB) {
 
 	migrateRBAC(db)
 	migrateUsers(db)
+	migrateExamModels(db)
 
 	log.Println("✓ Migrations completed successfully")
 }

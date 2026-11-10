@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -52,15 +53,18 @@ func getEnvAsInt(key string, fallback int) int {
 }
 
 func InitDB() *gorm.DB {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
+	dsn := fmt.Sprintf("host=%s user=%s database=%s port=%s sslmode=%s TimeZone=%s",
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_NAME"),
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_SSLMODE"),
 		os.Getenv("DB_TIMEZONE"),
 	)
+	if password := os.Getenv("DB_PASSWORD"); password != "" {
+		escapedPassword := strings.ReplaceAll(strings.ReplaceAll(password, `\`, `\\`), `'`, `\'`)
+		dsn += fmt.Sprintf(" password='%s'", escapedPassword)
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),

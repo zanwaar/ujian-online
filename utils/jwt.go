@@ -8,20 +8,33 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+func jwtSecretKey() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "default_secret_key"
+	}
+	return []byte(secret)
+}
 
 func GenerateToken(userID string) (string, error) {
-	if len(jwtSecret) == 0 {
-		jwtSecret = []byte("default_secret_key") // Fallback for dev
-	}
-
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(jwtSecretKey())
+}
+
+func GenerateCandidateToken(candidateID string) (string, error) {
+	claims := jwt.MapClaims{
+		"candidate_id":   candidateID,
+		"principal_type": "candidate",
+		"exp":            time.Now().Add(time.Hour * 24).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecretKey())
 }
 
 func ValidateToken(tokenString string) (*jwt.Token, error) {
@@ -29,6 +42,6 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return jwtSecret, nil
+		return jwtSecretKey(), nil
 	})
 }

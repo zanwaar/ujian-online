@@ -56,6 +56,7 @@ func main() {
 	// 3. Run Migrations (Optional via flag)
 	migrate := flag.Bool("migrate", false, "Run database migrations")
 	seed := flag.Bool("seed", false, "Run database seeder")
+	seedDemo := flag.Bool("seed-demo", false, "Seed demo exam data and exit")
 	flag.Parse()
 
 	if *migrate {
@@ -64,12 +65,30 @@ func main() {
 
 	// 4. Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	examRepo := repository.NewExamRepository(db)
+	sessionRepo := repository.NewSessionRepository(db)
+	questionRepo := repository.NewQuestionRepository(db)
+	candidateRepo := repository.NewCandidateRepository(db)
+	assignmentRepo := repository.NewAssignmentRepository(db)
+	attemptRepo := repository.NewAttemptRepository(db)
 
 	// 4. Initialize services
 	userService := service.NewUserService(userRepo)
+	examService := service.NewExamService(examRepo)
+	sessionService := service.NewSessionService(sessionRepo)
+	questionService := service.NewQuestionService(questionRepo)
+	candidateService := service.NewCandidateService(candidateRepo)
+	assignmentService := service.NewAssignmentService(assignmentRepo)
+	attemptService := service.NewAttemptService(attemptRepo)
 
 	// 5. Initialize controllers
 	userCtrl := controller.NewUserController(userService)
+	examCtrl := controller.NewExamController(examService)
+	sessionCtrl := controller.NewSessionController(sessionService)
+	questionCtrl := controller.NewQuestionController(questionService)
+	candidateCtrl := controller.NewCandidateController(candidateService)
+	assignmentCtrl := controller.NewAssignmentController(assignmentService)
+	attemptCtrl := controller.NewAttemptController(attemptService)
 	roleCtrl := controller.NewRoleController(db)
 
 	// Run Seeder
@@ -77,6 +96,12 @@ func main() {
 		utils.SeedRolesAndPermissions(db)
 
 		utils.SeedUsers(db)
+	}
+	if *seedDemo {
+		if err := utils.SeedDemoExam(db); err != nil {
+			log.Fatalf("Failed to seed demo exam: %v", err)
+		}
+		return
 	}
 
 	// 6. Initialize Gin router
@@ -89,7 +114,7 @@ func main() {
 	app.Use(middleware.RateLimiterMiddleware())
 
 	// 8. Setup routes
-	routes.SetupRoutes(app, userCtrl, roleCtrl)
+	routes.SetupRoutes(app, userCtrl, roleCtrl, examCtrl, sessionCtrl, questionCtrl, candidateCtrl, assignmentCtrl, attemptCtrl)
 
 	// 9. Health check endpoint
 	app.GET("/health", func(c *gin.Context) {
