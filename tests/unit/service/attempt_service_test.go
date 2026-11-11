@@ -16,26 +16,29 @@ import (
 )
 
 type fakeAttemptRepository struct {
-	startContext     *repository.AttemptStartContext
-	startErr         error
-	activeAttempt    *entity.Attempt
-	activeErr        error
-	completedAttempt *entity.Attempt
-	completedErr     error
-	questions        []entity.Question
-	attemptCount     int64
-	createdAttempt   *entity.Attempt
-	createdQuestions []entity.AttemptQuestion
-	findAttempt      *entity.Attempt
-	findAttemptErr   error
-	savedOption      string
-	submitAttempt    *entity.Attempt
-	submitCalls      int
-	resultAttempt    *entity.Attempt
-	resultShowResult bool
-	resultErr        error
-	adminDetail      *repository.AdminAttemptDetailData
-	adminDetailErr   error
+
+	startContext           *repository.AttemptStartContext
+	startErr               error
+	activeAttempt          *entity.Attempt
+	activeErr              error
+	completedAttempt       *entity.Attempt
+	completedErr           error
+	questions              []entity.Question
+	attemptCount           int64
+	createdAttempt         *entity.Attempt
+	createdQuestions       []entity.AttemptQuestion
+	findAttempt            *entity.Attempt
+	findAttemptErr         error
+	findAttemptCandidateID string
+	savedOption            string
+	saveAnswerCandidateID  string
+	submitAttempt          *entity.Attempt
+	submitCalls            int
+	resultAttempt          *entity.Attempt
+	resultShowResult       bool
+	resultErr              error
+	adminDetail            *repository.AdminAttemptDetailData
+	adminDetailErr         error
 }
 
 func newFakeAttemptRepository() *fakeAttemptRepository {
@@ -98,11 +101,13 @@ func (f *fakeAttemptRepository) CreateAttemptWithSnapshot(attempt *entity.Attemp
 	return nil
 }
 
-func (f *fakeAttemptRepository) FindAttemptForCandidate(string, string) (*entity.Attempt, error) {
+func (f *fakeAttemptRepository) FindAttemptForCandidate(_, candidateID string) (*entity.Attempt, error) {
+	f.findAttemptCandidateID = candidateID
 	return f.findAttempt, f.findAttemptErr
 }
 
-func (f *fakeAttemptRepository) SaveAnswer(_, _, _, selectedOptionKey string, _ time.Time) error {
+func (f *fakeAttemptRepository) SaveAnswer(_, candidateID, _, selectedOptionKey string, _ time.Time) error {
+	f.saveAnswerCandidateID = candidateID
 	f.savedOption = selectedOptionKey
 	return nil
 }
@@ -199,6 +204,28 @@ func TestAttemptServiceAnswerNormalizesOptionKey(t *testing.T) {
 	}
 	if repo.savedOption != "B" {
 		t.Fatalf("saved option = %q, want %q", repo.savedOption, "B")
+	}
+}
+
+func TestAttemptServiceGetScopesAttemptLookupToCandidate(t *testing.T) {
+	repo := newFakeAttemptRepository()
+	repo.findAttemptErr = gorm.ErrRecordNotFound
+
+	if _, err := service.NewAttemptService(repo).Get("candidate-2", "attempt-1"); err == nil {
+		t.Fatal("Get() should reject an attempt that is not owned by the candidate")
+	}
+	if repo.findAttemptCandidateID != "candidate-2" {
+		t.Fatalf("candidate ID = %q, want candidate-2", repo.findAttemptCandidateID)
+	}
+}
+
+func TestAttemptServiceAnswerScopesSaveToCandidate(t *testing.T) {
+	repo := newFakeAttemptRepository()
+	if err := service.NewAttemptService(repo).Answer("candidate-2", "attempt-1", "question-1", "A"); err != nil {
+		t.Fatalf("Answer() error = %v", err)
+	}
+	if repo.saveAnswerCandidateID != "candidate-2" {
+		t.Fatalf("candidate ID = %q, want candidate-2", repo.saveAnswerCandidateID)
 	}
 }
 
