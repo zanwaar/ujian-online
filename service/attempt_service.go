@@ -21,6 +21,7 @@ type AttemptService interface {
 	Get(candidateID, attemptID string) (*dto.AttemptView, error)
 	Answer(candidateID, attemptID, questionID, selectedOptionKey string) error
 	Submit(candidateID, attemptID string) (*dto.AttemptView, error)
+	ExpireDueAttempts(now time.Time) (int64, error)
 	Result(candidateID, attemptID string) (*dto.AttemptResultView, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 	GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error)
@@ -238,6 +239,10 @@ func (s *attemptService) Submit(candidateID, attemptID string) (*dto.AttemptView
 		return nil, err
 	}
 	return s.Get(candidateID, attemptID)
+}
+
+func (s *attemptService) ExpireDueAttempts(now time.Time) (int64, error) {
+	return s.repo.ExpireDueAttempts(now)
 }
 
 func (s *attemptService) Result(candidateID, attemptID string) (*dto.AttemptResultView, error) {

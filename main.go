@@ -5,7 +5,9 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
+	"time"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -80,6 +82,7 @@ func main() {
 	candidateService := service.NewCandidateService(candidateRepo)
 	assignmentService := service.NewAssignmentService(assignmentRepo)
 	attemptService := service.NewAttemptService(attemptRepo)
+	go runAttemptExpiryWorker(attemptService, config.AppConfig.AttemptExpiryInterval)
 
 	// 5. Initialize controllers
 	userCtrl := controller.NewUserController(userService)
@@ -105,31 +108,48 @@ func main() {
 	}
 
 	// 6. Initialize Gin router
-	app := gin.Default()
+	app := gin.New()
+	app.Use(gin.Recovery())
 
 	// 7. Apply global middleware
+	app.Use(middleware.RequestIDMiddleware())
 	app.Use(middleware.LoggerMiddleware())
-	app.Use(middleware.CORSMiddleware())
+	app.Use(middleware.CORSMiddleware(config.AppConfig.CORSAllowedOrigins))
 	app.Use(middleware.ErrorHandlerMiddleware())
 	app.Use(middleware.RateLimiterMiddleware())
 
 	// 8. Setup routes
 	routes.SetupRoutes(app, userCtrl, roleCtrl, examCtrl, sessionCtrl, questionCtrl, candidateCtrl, assignmentCtrl, attemptCtrl)
 
-	// 9. Health check endpoint
+	// 9. Liveness and readiness endpoints
 	app.GET("/health", func(c *gin.Context) {
+		utils.SuccessResponse(c, "API is running", gin.H{
+			"status":     "ok",
+			"request_id": middleware.RequestID(c),
+		})
+	})
+	app.GET("/ready", func(c *gin.Context) {
 		sqlDB, err := db.DB()
 		if err != nil {
-			utils.ErrorResponse(c, "Database connection failed", 500, nil)
+			utils.ErrorResponse(c, "Database connection failed", http.StatusServiceUnavailable, gin.H{
+				"status":     "not_ready",
+				"request_id": middleware.RequestID(c),
+			})
 			return
 		}
 
 		if err := sqlDB.Ping(); err != nil {
-			utils.ErrorResponse(c, "Database ping failed", 500, nil)
+			utils.ErrorResponse(c, "Database ping failed", http.StatusServiceUnavailable, gin.H{
+				"status":     "not_ready",
+				"request_id": middleware.RequestID(c),
+			})
 			return
 		}
 
-		utils.SuccessResponse(c, "API is running and DB is connected", nil)
+		utils.SuccessResponse(c, "API is ready", gin.H{
+			"status":     "ready",
+			"request_id": middleware.RequestID(c),
+		})
 	})
 
 	// 10. Start server
@@ -141,5 +161,20 @@ func main() {
 	log.Printf("🚀 Server starting on port %s", port)
 	if err := app.Run(":" + port); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
+	}
+}
+
+func runAttemptExpiryWorker(attemptService service.AttemptService, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for now := range ticker.C {
+		expiredCount, err := attemptService.ExpireDueAttempts(now.UTC())
+		if err != nil {
+			slog.Error("attempt_expiry_failed", "error", err)
+			continue
+		}
+		if expiredCount > 0 {
+			slog.Info("attempts_expired", "count", expiredCount)
+		}
 	}
 }

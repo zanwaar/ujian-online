@@ -15,10 +15,13 @@ import (
 )
 
 type Config struct {
-	SMTPHost string
-	SMTPPort int
-	SMTPUser string
-	SMTPPass string
+	Environment           string
+	CORSAllowedOrigins    []string
+	AttemptExpiryInterval time.Duration
+	SMTPHost              string
+	SMTPPort              int
+	SMTPUser              string
+	SMTPPass              string
 }
 
 var AppConfig *Config
@@ -30,11 +33,33 @@ func LoadEnv() {
 	}
 
 	AppConfig = &Config{
-		SMTPHost: getEnv("SMTP_HOST", "localhost"),
-		SMTPPort: getEnvAsInt("SMTP_PORT", 1025),
-		SMTPUser: getEnv("SMTP_USER", ""),
-		SMTPPass: getEnv("SMTP_PASS", ""),
+		Environment:           getEnv("ENVIRONMENT", "development"),
+		CORSAllowedOrigins:    splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
+		AttemptExpiryInterval: time.Duration(maxInt(getEnvAsInt("ATTEMPT_EXPIRY_INTERVAL_SECONDS", 5), 1)) * time.Second,
+		SMTPHost:              getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:              getEnvAsInt("SMTP_PORT", 1025),
+		SMTPUser:              getEnv("SMTP_USER", ""),
+		SMTPPass:              getEnv("SMTP_PASS", ""),
 	}
+}
+
+func maxInt(value, minimum int) int {
+	if value < minimum {
+		return minimum
+	}
+	return value
+}
+
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }
 
 func getEnv(key, fallback string) string {

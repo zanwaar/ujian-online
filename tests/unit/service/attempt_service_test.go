@@ -16,7 +16,6 @@ import (
 )
 
 type fakeAttemptRepository struct {
-
 	startContext           *repository.AttemptStartContext
 	startErr               error
 	activeAttempt          *entity.Attempt
@@ -119,6 +118,10 @@ func (f *fakeAttemptRepository) SubmitAttempt(_, _ string, _ time.Time) (*entity
 		return f.submitAttempt, nil
 	}
 	return f.findAttempt, nil
+}
+
+func (f *fakeAttemptRepository) ExpireDueAttempts(time.Time) (int64, error) {
+	return 0, nil
 }
 
 func (f *fakeAttemptRepository) FindResultForCandidate(string, string) (*entity.Attempt, bool, error) {

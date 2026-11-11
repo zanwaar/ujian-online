@@ -81,8 +81,8 @@ func RateLimiterMiddleware() gin.HandlerFunc {
 
 		// Check User Limit if authenticated
 		userID, exists := c.Get("user_id")
-		if exists {
-			if !userLimiter.GetLimiter(userID.(string)).Allow() {
+		if userIDValue, ok := userID.(string); exists && ok && userIDValue != "" {
+			if !userLimiter.GetLimiter(userIDValue).Allow() {
 				utils.ErrorResponse(c, "Too Many Requests", http.StatusTooManyRequests, "User rate limit exceeded")
 				c.Abort()
 				return

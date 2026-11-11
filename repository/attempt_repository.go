@@ -39,6 +39,7 @@ type AttemptRepository interface {
 	FindAttemptForCandidate(attemptID, candidateID string) (*entity.Attempt, error)
 	SaveAnswer(attemptID, candidateID, questionID, selectedOptionKey string, answeredAt time.Time) error
 	SubmitAttempt(attemptID, candidateID string, submittedAt time.Time) (*entity.Attempt, error)
+	ExpireDueAttempts(now time.Time) (int64, error)
 	FindResultForCandidate(attemptID, candidateID string) (*entity.Attempt, bool, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 	FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error)
@@ -234,18 +235,11 @@ func (r *attemptRepository) SubmitAttempt(attemptID, candidateID string, submitt
 			result = attempt
 			return nil
 		}
-		var totalQuestions int64
-		if err := tx.Model(&entity.AttemptQuestion{}).Where("attempt_id = ?", attempt.ID).Count(&totalQuestions).Error; err != nil {
-			return err
-		}
-		var correctCount int64
-		if err := tx.Model(&entity.AttemptAnswer{}).Where("attempt_id = ? AND is_correct = ?", attempt.ID, true).Count(&correctCount).Error; err != nil {
-			return err
-		}
 		attempt.Status = "submitted"
 		attempt.SubmittedAt = &submittedAt
-		attempt.CorrectCount = int(correctCount)
-		attempt.Score = calculateScore(correctCount, totalQuestions)
+		if err := scoreAttempt(tx, &attempt); err != nil {
+			return err
+		}
 		if err := tx.Save(&attempt).Error; err != nil {
 			return err
 		}
@@ -253,6 +247,47 @@ func (r *attemptRepository) SubmitAttempt(attemptID, candidateID string, submitt
 		return nil
 	})
 	return &result, err
+}
+
+func (r *attemptRepository) ExpireDueAttempts(now time.Time) (int64, error) {
+	var expiredCount int64
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var attempts []entity.Attempt
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("status = ? AND deadline_at IS NOT NULL AND deadline_at <= ?", "in_progress", now).
+			Find(&attempts).Error; err != nil {
+			return err
+		}
+
+		for index := range attempts {
+			attempt := &attempts[index]
+			attempt.Status = "expired"
+			attempt.SubmittedAt = &now
+			if err := scoreAttempt(tx, attempt); err != nil {
+				return err
+			}
+			if err := tx.Save(attempt).Error; err != nil {
+				return err
+			}
+			expiredCount++
+		}
+		return nil
+	})
+	return expiredCount, err
+}
+
+func scoreAttempt(tx *gorm.DB, attempt *entity.Attempt) error {
+	var totalQuestions int64
+	if err := tx.Model(&entity.AttemptQuestion{}).Where("attempt_id = ?", attempt.ID).Count(&totalQuestions).Error; err != nil {
+		return err
+	}
+	var correctCount int64
+	if err := tx.Model(&entity.AttemptAnswer{}).Where("attempt_id = ? AND is_correct = ?", attempt.ID, true).Count(&correctCount).Error; err != nil {
+		return err
+	}
+	attempt.CorrectCount = int(correctCount)
+	attempt.Score = calculateScore(correctCount, totalQuestions)
+	return nil
 }
 
 func (r *attemptRepository) FindResultForCandidate(attemptID, candidateID string) (*entity.Attempt, bool, error) {
