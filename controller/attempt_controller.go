@@ -133,3 +133,12 @@ func (c *AttemptController) ListAdminResults(ctx *gin.Context) {
 	}
 	utils.APIResponse(ctx, "Exam results loaded successfully", http.StatusOK, result.Items, nil, utils.BuildMeta(result.Pagination, time.Since(startedAt).Seconds()))
 }
+
+func (c *AttemptController) GetAdminResultDetail(ctx *gin.Context) {
+	result, err := c.service.GetAdminResultDetail(ctx.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(ctx, "Exam result not found", http.StatusNotFound, nil)
+		return
+	}
+	utils.SuccessResponse(ctx, "Exam result detail loaded successfully", result)
+}

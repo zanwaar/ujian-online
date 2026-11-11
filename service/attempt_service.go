@@ -23,6 +23,7 @@ type AttemptService interface {
 	Submit(candidateID, attemptID string) (*dto.AttemptView, error)
 	Result(candidateID, attemptID string) (*dto.AttemptResultView, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
+	GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error)
 }
 
 type attemptService struct {
@@ -39,6 +40,54 @@ func (s *attemptService) ListSchedules(candidateID string) ([]dto.CandidateExamS
 
 func (s *attemptService) ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error) {
 	return s.repo.ListAdminResults(filters, page, perPage)
+}
+
+func (s *attemptService) GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error) {
+	data, err := s.repo.FindAdminResultDetail(attemptID)
+	if err != nil {
+		return nil, err
+	}
+
+	answers := make(map[string]entity.AttemptAnswer, len(data.Answers))
+	for _, answer := range data.Answers {
+		answers[answer.AttemptQuestionID] = answer
+	}
+
+	detail := &dto.AdminAttemptDetail{
+		AdminAttemptResult: data.Result,
+		Questions:          make([]dto.AdminAttemptQuestionDetail, 0, len(data.Questions)),
+	}
+	for _, question := range data.Questions {
+		var snapshot questionSnapshot
+		if err := json.Unmarshal([]byte(question.SnapshotContentJSON), &snapshot); err != nil {
+			return nil, err
+		}
+		questionDetail := dto.AdminAttemptQuestionDetail{
+			ID:               question.ID,
+			SequenceNumber:   question.SequenceNumber,
+			Code:             snapshot.Code,
+			ContentHTML:      snapshot.ContentHTML,
+			CorrectOptionKey: snapshot.CorrectOptionKey,
+			Options:          make([]dto.AdminAttemptOptionDetail, 0, len(snapshot.Options)),
+		}
+		for _, option := range snapshot.Options {
+			questionDetail.Options = append(questionDetail.Options, dto.AdminAttemptOptionDetail{
+				OptionKey:   option.OptionKey,
+				ContentHTML: option.ContentHTML,
+				IsCorrect:   option.OptionKey == snapshot.CorrectOptionKey,
+			})
+		}
+		if answer, ok := answers[question.ID]; ok {
+			if answer.SelectedOptionKey != "" {
+				selectedOptionKey := answer.SelectedOptionKey
+				questionDetail.SelectedOptionKey = &selectedOptionKey
+			}
+			questionDetail.AnsweredAt = answer.AnsweredAt
+			questionDetail.IsCorrect = answer.IsCorrect
+		}
+		detail.Questions = append(detail.Questions, questionDetail)
+	}
+	return detail, nil
 }
 
 type snapshotOption struct {

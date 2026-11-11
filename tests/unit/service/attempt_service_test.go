@@ -34,6 +34,8 @@ type fakeAttemptRepository struct {
 	resultAttempt    *entity.Attempt
 	resultShowResult bool
 	resultErr        error
+	adminDetail      *repository.AdminAttemptDetailData
+	adminDetailErr   error
 }
 
 func newFakeAttemptRepository() *fakeAttemptRepository {
@@ -49,6 +51,10 @@ func (f *fakeAttemptRepository) ListSchedules(string) ([]dto.CandidateExamSchedu
 
 func (f *fakeAttemptRepository) ListAdminResults(map[string]string, int, int) (*utils.PaginationResult, error) {
 	return nil, nil
+}
+
+func (f *fakeAttemptRepository) FindAdminResultDetail(string) (*repository.AdminAttemptDetailData, error) {
+	return f.adminDetail, f.adminDetailErr
 }
 
 func (f *fakeAttemptRepository) FindStartContext(string, string) (*repository.AttemptStartContext, error) {
@@ -248,5 +254,41 @@ func TestAttemptServiceResultIncludesExamIDAndHonorsVisibility(t *testing.T) {
 	}
 	if result.ExamID != "exam-1" || result.CorrectCount != 0 || result.Score != 0 {
 		t.Fatalf("unexpected hidden result: %+v", result)
+	}
+}
+
+func TestAttemptServiceGetAdminResultDetailUsesAttemptSnapshot(t *testing.T) {
+	repo := newFakeAttemptRepository()
+	repo.adminDetail = &repository.AdminAttemptDetailData{
+		Result: dto.AdminAttemptResult{
+			AttemptID:     "attempt-1",
+			CandidateName: "Siswa Satu",
+			Score:         100,
+		},
+		Questions: []entity.AttemptQuestion{{
+			Base:                entity.Base{ID: "attempt-question-1"},
+			SequenceNumber:      1,
+			SnapshotContentJSON: `{"code":"Q1","content_html":"<p>2 + 2 = ?</p>","correct_option_key":"B","options":[{"option_key":"A","content_html":"3"},{"option_key":"B","content_html":"4"}]}`,
+		}},
+		Answers: []entity.AttemptAnswer{{
+			AttemptQuestionID: "attempt-question-1",
+			SelectedOptionKey: "B",
+			IsCorrect:         true,
+		}},
+	}
+
+	detail, err := service.NewAttemptService(repo).GetAdminResultDetail("attempt-1")
+	if err != nil {
+		t.Fatalf("GetAdminResultDetail() error = %v", err)
+	}
+	if detail.AttemptID != "attempt-1" || len(detail.Questions) != 1 {
+		t.Fatalf("unexpected detail: %+v", detail)
+	}
+	question := detail.Questions[0]
+	if question.SelectedOptionKey == nil || *question.SelectedOptionKey != "B" || !question.IsCorrect {
+		t.Fatalf("unexpected answer detail: %+v", question)
+	}
+	if len(question.Options) != 2 || !question.Options[1].IsCorrect || question.Options[0].IsCorrect {
+		t.Fatalf("unexpected option correctness: %+v", question.Options)
 	}
 }

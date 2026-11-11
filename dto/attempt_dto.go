@@ -75,3 +75,26 @@ type AdminAttemptResult struct {
 	CorrectCount        int        `json:"correct_count"`
 	Score               float64    `json:"score"`
 }
+
+type AdminAttemptOptionDetail struct {
+	OptionKey   string `json:"option_key"`
+	ContentHTML string `json:"content_html"`
+	IsCorrect   bool   `json:"is_correct"`
+}
+
+type AdminAttemptQuestionDetail struct {
+	ID                string                     `json:"id"`
+	SequenceNumber    int                        `json:"sequence_number"`
+	Code              string                     `json:"code,omitempty"`
+	ContentHTML       string                     `json:"content_html"`
+	Options           []AdminAttemptOptionDetail `json:"options"`
+	CorrectOptionKey  string                     `json:"correct_option_key,omitempty"`
+	SelectedOptionKey *string                    `json:"selected_option_key,omitempty"`
+	AnsweredAt        *time.Time                 `json:"answered_at,omitempty"`
+	IsCorrect         bool                       `json:"is_correct"`
+}
+
+type AdminAttemptDetail struct {
+	AdminAttemptResult
+	Questions []AdminAttemptQuestionDetail `json:"questions"`
+}

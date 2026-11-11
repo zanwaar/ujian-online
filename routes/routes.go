@@ -75,6 +75,7 @@ func SetupRoutes(app *gin.Engine, userCtrl *controller.UserController, roleCtrl 
 	adminV1.GET("/assignments/:id", assignmentCtrl.Get)
 	adminV1.DELETE("/assignments/:id", assignmentCtrl.Archive)
 	adminV1.GET("/results", attemptCtrl.ListAdminResults)
+	adminV1.GET("/results/:id", attemptCtrl.GetAdminResultDetail)
 
 	candidateV1 := apiV1.Group("/candidate")
 	candidateV1.Use(middleware.CandidateAuthMiddleware())

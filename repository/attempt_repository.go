@@ -41,6 +41,13 @@ type AttemptRepository interface {
 	SubmitAttempt(attemptID, candidateID string, submittedAt time.Time) (*entity.Attempt, error)
 	FindResultForCandidate(attemptID, candidateID string) (*entity.Attempt, bool, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
+	FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error)
+}
+
+type AdminAttemptDetailData struct {
+	Result    dto.AdminAttemptResult
+	Questions []entity.AttemptQuestion
+	Answers   []entity.AttemptAnswer
 }
 
 type attemptRepository struct {
@@ -327,4 +334,33 @@ func (r *attemptRepository) ListAdminResults(filters map[string]string, page, pe
 		Items:      results,
 		Pagination: utils.CalculatePagination(total, page, perPage),
 	}, nil
+}
+
+func (r *attemptRepository) FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error) {
+	var result dto.AdminAttemptResult
+	if err := r.db.Table("attempts a").
+		Select(`a.id AS attempt_id, a.attempt_number, a.status, a.started_at, a.submitted_at,
+			a.correct_count, a.score, c.id AS candidate_id, c.exam_number AS candidate_exam_number,
+			c.name AS candidate_name, e.id AS exam_id, e.name AS exam_name,
+			es.id AS session_id, es.name AS session_name`).
+		Joins("JOIN exam_assignments ea ON ea.id = a.assignment_id AND ea.deleted_at IS NULL").
+		Joins("JOIN candidates c ON c.id = ea.candidate_id AND c.deleted_at IS NULL").
+		Joins("JOIN exams e ON e.id = ea.exam_id AND e.deleted_at IS NULL").
+		Joins("JOIN exam_sessions es ON es.id = ea.exam_session_id AND es.deleted_at IS NULL").
+		Where("a.id = ? AND a.deleted_at IS NULL", attemptID).
+		Take(&result).Error; err != nil {
+		return nil, err
+	}
+
+	var questions []entity.AttemptQuestion
+	if err := r.db.Where("attempt_id = ? AND deleted_at IS NULL", attemptID).
+		Order("sequence_number ASC").Find(&questions).Error; err != nil {
+		return nil, err
+	}
+	var answers []entity.AttemptAnswer
+	if err := r.db.Where("attempt_id = ? AND deleted_at IS NULL", attemptID).Find(&answers).Error; err != nil {
+		return nil, err
+	}
+
+	return &AdminAttemptDetailData{Result: result, Questions: questions, Answers: answers}, nil
 }
