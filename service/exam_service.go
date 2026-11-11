@@ -42,12 +42,16 @@ func (s *examService) Create(req dto.CreateExamRequest) (*entity.Exam, error) {
 	if code == "" || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Subject) == "" {
 		return nil, errors.New("code, name, and subject are required")
 	}
+	descriptionHTML := utils.SanitizeHTML(req.DescriptionHTML)
+	if strings.TrimSpace(descriptionHTML) == "" {
+		return nil, errors.New("description_html must contain visible text")
+	}
 
 	exam := &entity.Exam{
 		Code:            code,
 		Name:            strings.TrimSpace(req.Name),
 		Subject:         strings.TrimSpace(req.Subject),
-		DescriptionHTML: req.DescriptionHTML,
+		DescriptionHTML: descriptionHTML,
 		DurationMinutes: req.DurationMinutes,
 		ShowResult:      req.ShowResult,
 		Status:          "draft",
@@ -73,10 +77,14 @@ func (s *examService) Update(id string, req dto.UpdateExamRequest) (*entity.Exam
 	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Subject) == "" {
 		return nil, errors.New("name and subject are required")
 	}
+	descriptionHTML := utils.SanitizeHTML(req.DescriptionHTML)
+	if strings.TrimSpace(descriptionHTML) == "" {
+		return nil, errors.New("description_html must contain visible text")
+	}
 
 	exam.Name = strings.TrimSpace(req.Name)
 	exam.Subject = strings.TrimSpace(req.Subject)
-	exam.DescriptionHTML = req.DescriptionHTML
+	exam.DescriptionHTML = descriptionHTML
 	exam.DurationMinutes = req.DurationMinutes
 	exam.ShowResult = req.ShowResult
 	if req.Status != "" {

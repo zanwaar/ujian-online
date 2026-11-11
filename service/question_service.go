@@ -37,7 +37,8 @@ func validateQuestionOptions(input []dto.QuestionOptionRequest) ([]entity.Questi
 	correctCount := 0
 	for index, item := range input {
 		key := strings.ToUpper(strings.TrimSpace(item.OptionKey))
-		if key == "" || strings.TrimSpace(item.ContentHTML) == "" {
+		contentHTML := utils.SanitizeHTML(item.ContentHTML)
+		if key == "" || strings.TrimSpace(contentHTML) == "" {
 			return nil, fmt.Errorf("option %d requires option_key and content_html", index+1)
 		}
 		if _, exists := seen[key]; exists {
@@ -49,7 +50,7 @@ func validateQuestionOptions(input []dto.QuestionOptionRequest) ([]entity.Questi
 		}
 		options = append(options, entity.QuestionOption{
 			OptionKey:    key,
-			ContentHTML:  item.ContentHTML,
+			ContentHTML:  contentHTML,
 			IsCorrect:    item.IsCorrect,
 			DisplayOrder: item.DisplayOrder,
 		})
@@ -72,7 +73,8 @@ func (s *questionService) Get(id string) (*entity.Question, error) {
 }
 
 func (s *questionService) Create(req dto.CreateQuestionRequest) (*entity.Question, error) {
-	if strings.TrimSpace(req.ExamVersionID) == "" || strings.TrimSpace(req.ContentHTML) == "" {
+	contentHTML := utils.SanitizeHTML(req.ContentHTML)
+	if strings.TrimSpace(req.ExamVersionID) == "" || strings.TrimSpace(contentHTML) == "" {
 		return nil, errors.New("exam_version_id and content_html are required")
 	}
 	exists, err := s.repo.ExamVersionExists(req.ExamVersionID)
@@ -90,7 +92,7 @@ func (s *questionService) Create(req dto.CreateQuestionRequest) (*entity.Questio
 	question := &entity.Question{
 		ExamVersionID: req.ExamVersionID,
 		Code:          strings.TrimSpace(req.Code),
-		ContentHTML:   req.ContentHTML,
+		ContentHTML:   contentHTML,
 		Weight:        req.Weight,
 		DisplayOrder:  req.DisplayOrder,
 		Status:        "active",
@@ -111,8 +113,12 @@ func (s *questionService) Update(id string, req dto.UpdateQuestionRequest) (*ent
 	if err != nil {
 		return nil, err
 	}
+	contentHTML := utils.SanitizeHTML(req.ContentHTML)
+	if strings.TrimSpace(contentHTML) == "" {
+		return nil, errors.New("content_html must contain visible text")
+	}
 	question.Code = strings.TrimSpace(req.Code)
-	question.ContentHTML = req.ContentHTML
+	question.ContentHTML = contentHTML
 	question.Weight = req.Weight
 	question.DisplayOrder = req.DisplayOrder
 	if req.Status != "" {
