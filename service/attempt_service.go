@@ -102,6 +102,19 @@ type questionSnapshot struct {
 	Options          []snapshotOption `json:"options"`
 }
 
+func shuffleQuestions(randomizer *rand.Rand, questions []entity.Question) {
+	randomizer.Shuffle(len(questions), func(first, second int) {
+		questions[first], questions[second] = questions[second], questions[first]
+	})
+}
+
+func shuffleOptions(randomizer *rand.Rand, options []snapshotOption, optionKeys []string) {
+	randomizer.Shuffle(len(options), func(first, second int) {
+		options[first], options[second] = options[second], options[first]
+		optionKeys[first], optionKeys[second] = optionKeys[second], optionKeys[first]
+	})
+}
+
 func (s *attemptService) Start(candidateID, examID string) (*dto.AttemptView, error) {
 	context, err := s.repo.FindStartContext(candidateID, examID)
 	if err != nil {
@@ -151,7 +164,7 @@ func (s *attemptService) Start(candidateID, examID string) (*dto.AttemptView, er
 	}
 	randomizer := rand.New(rand.NewSource(now.UnixNano()))
 	if context.ShuffleQuestions {
-		randomizer.Shuffle(len(questions), func(i, j int) { questions[i], questions[j] = questions[j], questions[i] })
+		shuffleQuestions(randomizer, questions)
 	}
 	snapshots := make([]entity.AttemptQuestion, 0, len(questions))
 	for index, question := range questions {
@@ -166,10 +179,7 @@ func (s *attemptService) Start(candidateID, examID string) (*dto.AttemptView, er
 			}
 		}
 		if context.ShuffleOptions {
-			randomizer.Shuffle(len(options), func(i, j int) {
-				options[i], options[j] = options[j], options[i]
-				optionKeys[i], optionKeys[j] = optionKeys[j], optionKeys[i]
-			})
+			shuffleOptions(randomizer, options, optionKeys)
 		}
 		snapshot, err := json.Marshal(questionSnapshot{
 			Code:             question.Code,
@@ -255,15 +265,13 @@ func (s *attemptService) Result(candidateID, attemptID string) (*dto.AttemptResu
 
 func (s *attemptService) toAttemptView(attempt *entity.Attempt) (*dto.AttemptView, error) {
 	view := &dto.AttemptView{
-		ID:           attempt.ID,
-		ExamID:       attempt.ExamID,
-		Status:       attempt.Status,
-		StartedAt:    attempt.StartedAt,
-		DeadlineAt:   attempt.DeadlineAt,
-		SubmittedAt:  attempt.SubmittedAt,
-		CorrectCount: attempt.CorrectCount,
-		Score:        attempt.Score,
-		Questions:    make([]dto.AttemptQuestionView, 0, len(attempt.Questions)),
+		ID:          attempt.ID,
+		ExamID:      attempt.ExamID,
+		Status:      attempt.Status,
+		StartedAt:   attempt.StartedAt,
+		DeadlineAt:  attempt.DeadlineAt,
+		SubmittedAt: attempt.SubmittedAt,
+		Questions:   make([]dto.AttemptQuestionView, 0, len(attempt.Questions)),
 	}
 	for _, question := range attempt.Questions {
 		var snapshot questionSnapshot

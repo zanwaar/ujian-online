@@ -54,6 +54,13 @@ type attemptRepository struct {
 	db *gorm.DB
 }
 
+func calculateScore(correctCount, totalQuestions int64) float64 {
+	if correctCount <= 0 || totalQuestions <= 0 {
+		return 0
+	}
+	return float64(correctCount) / float64(totalQuestions) * 100
+}
+
 func NewAttemptRepository(db *gorm.DB) AttemptRepository {
 	return &attemptRepository{db: db}
 }
@@ -238,9 +245,7 @@ func (r *attemptRepository) SubmitAttempt(attemptID, candidateID string, submitt
 		attempt.Status = "submitted"
 		attempt.SubmittedAt = &submittedAt
 		attempt.CorrectCount = int(correctCount)
-		if totalQuestions > 0 {
-			attempt.Score = float64(correctCount) / float64(totalQuestions) * 100
-		}
+		attempt.Score = calculateScore(correctCount, totalQuestions)
 		if err := tx.Save(&attempt).Error; err != nil {
 			return err
 		}

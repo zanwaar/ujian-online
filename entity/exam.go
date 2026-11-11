@@ -60,7 +60,7 @@ type QuestionOption struct {
 type Candidate struct {
 	Base
 	ExamNumber   string           `gorm:"column:exam_number;type:varchar(100);uniqueIndex;not null"`
-	PasswordHash string           `gorm:"type:varchar(255);not null"`
+	PasswordHash string           `gorm:"type:varchar(255);not null" json:"-"`
 	Name         string           `gorm:"type:varchar(100);not null"`
 	Gender       string           `gorm:"type:varchar(1);not null"`
 	School       string           `gorm:"type:varchar(100);not null"`

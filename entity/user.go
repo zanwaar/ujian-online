@@ -6,16 +6,16 @@ import (
 
 type User struct {
 	Base
-	Name             string `gorm:"type:varchar(100);not null"`
-	Email            string `gorm:"type:varchar(100);uniqueIndex;not null"`
-	Password         string `gorm:"not null"`
-	IsVerified       bool   `gorm:"default:false"`
-	VerificationCode string `gorm:"type:varchar(6)"`
-	ResetToken       string `gorm:"type:varchar(6)"`
-	ResetTokenExpiry time.Time
-	IsTwoFAEnabled   bool    `gorm:"default:false"`
-	TwoFASecret      string  `gorm:"type:varchar(100)"`
-	Roles            []*Role `gorm:"many2many:user_roles;"`
+	Name             string    `gorm:"type:varchar(100);not null"`
+	Email            string    `gorm:"type:varchar(100);uniqueIndex;not null"`
+	Password         string    `gorm:"not null" json:"-"`
+	IsVerified       bool      `gorm:"default:false"`
+	VerificationCode string    `gorm:"type:varchar(6)" json:"-"`
+	ResetToken       string    `gorm:"type:varchar(6)" json:"-"`
+	ResetTokenExpiry time.Time `json:"-"`
+	IsTwoFAEnabled   bool      `gorm:"default:false"`
+	TwoFASecret      string    `gorm:"type:varchar(100)" json:"-"`
+	Roles            []*Role   `gorm:"many2many:user_roles;"`
 }
 
 // Helper methods for Role & Permission checks

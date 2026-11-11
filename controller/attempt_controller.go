@@ -29,6 +29,13 @@ func candidateID(ctx *gin.Context) (string, bool) {
 	return candidateID, ok && candidateID != ""
 }
 
+// ListSchedules godoc
+// @Summary List candidate exam schedules
+// @Tags candidate
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response
+// @Router /v1/candidate/exams [get]
 func (c *AttemptController) ListSchedules(ctx *gin.Context) {
 	id, ok := candidateID(ctx)
 	if !ok {
@@ -43,6 +50,14 @@ func (c *AttemptController) ListSchedules(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Exam schedules loaded successfully", schedules)
 }
 
+// Start godoc
+// @Summary Start exam attempt
+// @Tags candidate
+// @Produce json
+// @Security BearerAuth
+// @Param exam_id path string true "Exam ID"
+// @Success 200 {object} utils.Response
+// @Router /v1/candidate/exams/{exam_id}/attempts [post]
 func (c *AttemptController) Start(ctx *gin.Context) {
 	id, ok := candidateID(ctx)
 	if !ok {
@@ -57,6 +72,14 @@ func (c *AttemptController) Start(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Exam attempt ready", attempt)
 }
 
+// Get godoc
+// @Summary Get candidate attempt
+// @Tags candidate
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Attempt ID"
+// @Success 200 {object} utils.Response
+// @Router /v1/candidate/attempts/{id} [get]
 func (c *AttemptController) Get(ctx *gin.Context) {
 	id, ok := candidateID(ctx)
 	if !ok {
@@ -71,6 +94,17 @@ func (c *AttemptController) Get(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Attempt loaded successfully", attempt)
 }
 
+// Answer godoc
+// @Summary Save candidate answer
+// @Tags candidate
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Attempt ID"
+// @Param question_id path string true "Attempt question ID"
+// @Param input body dto.AnswerRequest true "Selected answer"
+// @Success 200 {object} utils.Response
+// @Router /v1/candidate/attempts/{id}/answers/{question_id} [put]
 func (c *AttemptController) Answer(ctx *gin.Context) {
 	id, ok := candidateID(ctx)
 	if !ok {
@@ -89,6 +123,14 @@ func (c *AttemptController) Answer(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Answer saved successfully", nil)
 }
 
+// Submit godoc
+// @Summary Submit candidate attempt
+// @Tags candidate
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Attempt ID"
+// @Success 200 {object} utils.Response
+// @Router /v1/candidate/attempts/{id}/submit [post]
 func (c *AttemptController) Submit(ctx *gin.Context) {
 	id, ok := candidateID(ctx)
 	if !ok {
@@ -103,6 +145,14 @@ func (c *AttemptController) Submit(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Attempt submitted successfully", attempt)
 }
 
+// Result godoc
+// @Summary Get candidate result
+// @Tags candidate
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Attempt ID"
+// @Success 200 {object} utils.Response
+// @Router /v1/candidate/attempts/{id}/result [get]
 func (c *AttemptController) Result(ctx *gin.Context) {
 	id, ok := candidateID(ctx)
 	if !ok {
@@ -117,6 +167,13 @@ func (c *AttemptController) Result(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Attempt result loaded successfully", result)
 }
 
+// ListAdminResults godoc
+// @Summary List exam results
+// @Tags admin-results
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} utils.Response
+// @Router /v1/admin/results [get]
 func (c *AttemptController) ListAdminResults(ctx *gin.Context) {
 	page, perPage := utils.GetPaginationParams(ctx)
 	filters := map[string]string{
@@ -134,6 +191,14 @@ func (c *AttemptController) ListAdminResults(ctx *gin.Context) {
 	utils.APIResponse(ctx, "Exam results loaded successfully", http.StatusOK, result.Items, nil, utils.BuildMeta(result.Pagination, time.Since(startedAt).Seconds()))
 }
 
+// GetAdminResultDetail godoc
+// @Summary Get exam result detail
+// @Tags admin-results
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Attempt ID"
+// @Success 200 {object} utils.Response
+// @Router /v1/admin/results/{id} [get]
 func (c *AttemptController) GetAdminResultDetail(ctx *gin.Context) {
 	result, err := c.service.GetAdminResultDetail(ctx.Param("id"))
 	if err != nil {

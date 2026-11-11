@@ -1,5 +1,13 @@
 basePath: /api
 definitions:
+  dto.AnswerRequest:
+    properties:
+      selected_option_key:
+        maxLength: 4
+        type: string
+    required:
+    - selected_option_key
+    type: object
   dto.AssignPermissionRequest:
     properties:
       permission_name:
@@ -20,12 +28,138 @@ definitions:
     - role
     - user_id
     type: object
+  dto.CandidateLoginRequest:
+    properties:
+      exam_number:
+        type: string
+      password:
+        type: string
+    required:
+    - exam_number
+    - password
+    type: object
+  dto.CreateAssignmentRequest:
+    properties:
+      candidate_id:
+        type: string
+      exam_id:
+        type: string
+      exam_session_id:
+        type: string
+    required:
+    - candidate_id
+    - exam_id
+    - exam_session_id
+    type: object
+  dto.CreateCandidateRequest:
+    properties:
+      class_name:
+        maxLength: 50
+        type: string
+      exam_number:
+        maxLength: 100
+        type: string
+      gender:
+        enum:
+        - L
+        - P
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      password:
+        maxLength: 100
+        minLength: 6
+        type: string
+      school:
+        maxLength: 100
+        type: string
+    required:
+    - class_name
+    - exam_number
+    - gender
+    - name
+    - password
+    - school
+    type: object
+  dto.CreateExamRequest:
+    properties:
+      code:
+        maxLength: 50
+        type: string
+      description_html:
+        type: string
+      duration_minutes:
+        maximum: 1440
+        minimum: 1
+        type: integer
+      name:
+        maxLength: 100
+        type: string
+      show_result:
+        type: boolean
+      shuffle_options:
+        type: boolean
+      shuffle_questions:
+        type: boolean
+      subject:
+        maxLength: 100
+        type: string
+    required:
+    - code
+    - description_html
+    - duration_minutes
+    - name
+    - subject
+    type: object
+  dto.CreateExamSessionRequest:
+    properties:
+      ends_at:
+        type: string
+      exam_id:
+        type: string
+      name:
+        maxLength: 50
+        type: string
+      starts_at:
+        type: string
+    required:
+    - ends_at
+    - exam_id
+    - name
+    - starts_at
+    type: object
   dto.CreatePermissionRequest:
     properties:
       name:
         type: string
     required:
     - name
+    type: object
+  dto.CreateQuestionRequest:
+    properties:
+      code:
+        maxLength: 50
+        type: string
+      content_html:
+        type: string
+      display_order:
+        type: integer
+      exam_version_id:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/dto.QuestionOptionRequest'
+        maxItems: 5
+        minItems: 2
+        type: array
+      weight:
+        type: number
+    required:
+    - content_html
+    - exam_version_id
+    - options
+    - weight
     type: object
   dto.CreateRoleRequest:
     properties:
@@ -40,6 +174,21 @@ definitions:
         type: string
     required:
     - email
+    type: object
+  dto.QuestionOptionRequest:
+    properties:
+      content_html:
+        type: string
+      display_order:
+        type: integer
+      is_correct:
+        type: boolean
+      option_key:
+        maxLength: 4
+        type: string
+    required:
+    - content_html
+    - option_key
     type: object
   dto.ResetPasswordRequest:
     properties:
@@ -61,6 +210,118 @@ definitions:
         type: string
       secret:
         type: string
+    type: object
+  dto.UpdateCandidateRequest:
+    properties:
+      class_name:
+        maxLength: 50
+        type: string
+      gender:
+        enum:
+        - L
+        - P
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      password:
+        maxLength: 100
+        minLength: 6
+        type: string
+      school:
+        maxLength: 100
+        type: string
+      status:
+        enum:
+        - active
+        - inactive
+        - archived
+        type: string
+    required:
+    - class_name
+    - gender
+    - name
+    - school
+    type: object
+  dto.UpdateExamRequest:
+    properties:
+      description_html:
+        type: string
+      duration_minutes:
+        maximum: 1440
+        minimum: 1
+        type: integer
+      name:
+        maxLength: 100
+        type: string
+      show_result:
+        type: boolean
+      shuffle_options:
+        type: boolean
+      shuffle_questions:
+        type: boolean
+      status:
+        enum:
+        - draft
+        - published
+        - archived
+        type: string
+      subject:
+        maxLength: 100
+        type: string
+    required:
+    - description_html
+    - duration_minutes
+    - name
+    - subject
+    type: object
+  dto.UpdateExamSessionRequest:
+    properties:
+      ends_at:
+        type: string
+      name:
+        maxLength: 50
+        type: string
+      starts_at:
+        type: string
+      status:
+        enum:
+        - scheduled
+        - open
+        - closed
+        - archived
+        type: string
+    required:
+    - ends_at
+    - name
+    - starts_at
+    type: object
+  dto.UpdateQuestionRequest:
+    properties:
+      code:
+        maxLength: 50
+        type: string
+      content_html:
+        type: string
+      display_order:
+        type: integer
+      options:
+        items:
+          $ref: '#/definitions/dto.QuestionOptionRequest'
+        maxItems: 5
+        minItems: 2
+        type: array
+      status:
+        enum:
+        - active
+        - archived
+        type: string
+      weight:
+        type: number
+    required:
+    - content_html
+    - options
+    - weight
     type: object
   dto.UserLoginRequest:
     properties:
@@ -594,6 +855,728 @@ paths:
       summary: Get Users
       tags:
       - user
+  /v1/admin/assignments:
+    get:
+      parameters:
+      - description: Candidate ID
+        in: query
+        name: candidate_id
+        type: string
+      - description: Exam ID
+        in: query
+        name: exam_id
+        type: string
+      - description: Exam session ID
+        in: query
+        name: exam_session_id
+        type: string
+      - description: Assignment status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List assignments
+      tags:
+      - admin-assignments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Assignment data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateAssignmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create assignment
+      tags:
+      - admin-assignments
+  /v1/admin/assignments/{id}:
+    delete:
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Archive assignment
+      tags:
+      - admin-assignments
+    get:
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get assignment
+      tags:
+      - admin-assignments
+  /v1/admin/candidates:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List candidates
+      tags:
+      - admin-candidates
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Candidate data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCandidateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create candidate
+      tags:
+      - admin-candidates
+  /v1/admin/candidates/{id}:
+    delete:
+      parameters:
+      - description: Candidate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Archive candidate
+      tags:
+      - admin-candidates
+    get:
+      parameters:
+      - description: Candidate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get candidate
+      tags:
+      - admin-candidates
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Candidate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Candidate data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCandidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Update candidate
+      tags:
+      - admin-candidates
+  /v1/admin/exams:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List exams
+      tags:
+      - admin-exams
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Exam data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateExamRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create exam
+      tags:
+      - admin-exams
+  /v1/admin/exams/{id}:
+    delete:
+      parameters:
+      - description: Exam ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Archive exam
+      tags:
+      - admin-exams
+    get:
+      parameters:
+      - description: Exam ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get exam
+      tags:
+      - admin-exams
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Exam ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Exam data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateExamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Update exam
+      tags:
+      - admin-exams
+  /v1/admin/questions:
+    get:
+      parameters:
+      - description: Exam version ID
+        in: query
+        name: exam_version_id
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Question status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List questions
+      tags:
+      - admin-questions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Question data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create question
+      tags:
+      - admin-questions
+  /v1/admin/questions/{id}:
+    delete:
+      parameters:
+      - description: Question ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Archive question
+      tags:
+      - admin-questions
+    get:
+      parameters:
+      - description: Question ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get question
+      tags:
+      - admin-questions
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Question ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Question data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Update question
+      tags:
+      - admin-questions
+  /v1/admin/results:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List exam results
+      tags:
+      - admin-results
+  /v1/admin/results/{id}:
+    get:
+      parameters:
+      - description: Attempt ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get exam result detail
+      tags:
+      - admin-results
+  /v1/admin/sessions:
+    get:
+      parameters:
+      - description: Exam ID
+        in: query
+        name: exam_id
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Session status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List exam sessions
+      tags:
+      - admin-sessions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Session data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateExamSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create exam session
+      tags:
+      - admin-sessions
+  /v1/admin/sessions/{id}:
+    delete:
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Archive exam session
+      tags:
+      - admin-sessions
+    get:
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get exam session
+      tags:
+      - admin-sessions
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Session data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateExamSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Update exam session
+      tags:
+      - admin-sessions
+  /v1/auth/candidate/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Candidate credentials
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CandidateLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: Candidate login
+      tags:
+      - candidate-auth
+  /v1/candidate/attempts/{id}:
+    get:
+      parameters:
+      - description: Attempt ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get candidate attempt
+      tags:
+      - candidate
+  /v1/candidate/attempts/{id}/answers/{question_id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Attempt ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attempt question ID
+        in: path
+        name: question_id
+        required: true
+        type: string
+      - description: Selected answer
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AnswerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Save candidate answer
+      tags:
+      - candidate
+  /v1/candidate/attempts/{id}/result:
+    get:
+      parameters:
+      - description: Attempt ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get candidate result
+      tags:
+      - candidate
+  /v1/candidate/attempts/{id}/submit:
+    post:
+      parameters:
+      - description: Attempt ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Submit candidate attempt
+      tags:
+      - candidate
+  /v1/candidate/exams:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List candidate exam schedules
+      tags:
+      - candidate
+  /v1/candidate/exams/{exam_id}/attempts:
+    post:
+      parameters:
+      - description: Exam ID
+        in: path
+        name: exam_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Start exam attempt
+      tags:
+      - candidate
+  /v1/candidate/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get current candidate
+      tags:
+      - candidate
   /verify-email:
     post:
       consumes:
