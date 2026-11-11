@@ -10,6 +10,7 @@ import (
 	"golang-backend/entity"
 	"golang-backend/repository"
 	"golang-backend/service"
+	"golang-backend/utils"
 
 	"gorm.io/gorm"
 )
@@ -43,6 +44,10 @@ func newFakeAttemptRepository() *fakeAttemptRepository {
 }
 
 func (f *fakeAttemptRepository) ListSchedules(string) ([]dto.CandidateExamSchedule, error) {
+	return nil, nil
+}
+
+func (f *fakeAttemptRepository) ListAdminResults(map[string]string, int, int) (*utils.PaginationResult, error) {
 	return nil, nil
 }
 

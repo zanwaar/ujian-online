@@ -7,6 +7,7 @@ import (
 
 	"golang-backend/dto"
 	"golang-backend/entity"
+	"golang-backend/utils"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -39,6 +40,7 @@ type AttemptRepository interface {
 	SaveAnswer(attemptID, candidateID, questionID, selectedOptionKey string, answeredAt time.Time) error
 	SubmitAttempt(attemptID, candidateID string, submittedAt time.Time) (*entity.Attempt, error)
 	FindResultForCandidate(attemptID, candidateID string) (*entity.Attempt, bool, error)
+	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 }
 
 type attemptRepository struct {
@@ -257,4 +259,72 @@ func (r *attemptRepository) FindResultForCandidate(attemptID, candidateID string
 		return nil, false, err
 	}
 	return &attempt, showResult, nil
+}
+
+func (r *attemptRepository) ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error) {
+	query := r.db.Table("attempts a").
+		Select(`a.id AS attempt_id, a.attempt_number, a.status, a.started_at, a.submitted_at,
+			a.correct_count, a.score, c.id AS candidate_id, c.exam_number AS candidate_exam_number,
+			c.name AS candidate_name, e.id AS exam_id, e.name AS exam_name,
+			es.id AS session_id, es.name AS session_name`).
+		Joins("JOIN exam_assignments ea ON ea.id = a.assignment_id AND ea.deleted_at IS NULL").
+		Joins("JOIN candidates c ON c.id = ea.candidate_id AND c.deleted_at IS NULL").
+		Joins("JOIN exams e ON e.id = ea.exam_id AND e.deleted_at IS NULL").
+		Joins("JOIN exam_sessions es ON es.id = ea.exam_session_id AND es.deleted_at IS NULL").
+		Where("a.deleted_at IS NULL")
+
+	if status := filters["status"]; status != "" {
+		query = query.Where("a.status = ?", status)
+	} else {
+		query = query.Where("a.status IN ?", []string{"submitted", "expired"})
+	}
+	if examID := filters["exam_id"]; examID != "" {
+		query = query.Where("e.id = ?", examID)
+	}
+	if sessionID := filters["exam_session_id"]; sessionID != "" {
+		query = query.Where("es.id = ?", sessionID)
+	}
+	if search := filters["search"]; search != "" {
+		like := "%" + search + "%"
+		query = query.Where("c.exam_number ILIKE ? OR c.name ILIKE ? OR e.name ILIKE ? OR e.code ILIKE ?", like, like, like, like)
+	}
+
+	var total int64
+	countQuery := r.db.Table("attempts a").
+		Joins("JOIN exam_assignments ea ON ea.id = a.assignment_id AND ea.deleted_at IS NULL").
+		Joins("JOIN candidates c ON c.id = ea.candidate_id AND c.deleted_at IS NULL").
+		Joins("JOIN exams e ON e.id = ea.exam_id AND e.deleted_at IS NULL").
+		Joins("JOIN exam_sessions es ON es.id = ea.exam_session_id AND es.deleted_at IS NULL").
+		Where("a.deleted_at IS NULL")
+	if status := filters["status"]; status != "" {
+		countQuery = countQuery.Where("a.status = ?", status)
+	} else {
+		countQuery = countQuery.Where("a.status IN ?", []string{"submitted", "expired"})
+	}
+	if examID := filters["exam_id"]; examID != "" {
+		countQuery = countQuery.Where("e.id = ?", examID)
+	}
+	if sessionID := filters["exam_session_id"]; sessionID != "" {
+		countQuery = countQuery.Where("es.id = ?", sessionID)
+	}
+	if search := filters["search"]; search != "" {
+		like := "%" + search + "%"
+		countQuery = countQuery.Where("c.exam_number ILIKE ? OR c.name ILIKE ? OR e.name ILIKE ? OR e.code ILIKE ?", like, like, like, like)
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	var results []dto.AdminAttemptResult
+	offset := (page - 1) * perPage
+	if err := query.Order("COALESCE(a.submitted_at, a.started_at) DESC, a.created_at DESC").Limit(perPage).Offset(offset).Scan(&results).Error; err != nil {
+		return nil, err
+	}
+	if results == nil {
+		results = make([]dto.AdminAttemptResult, 0)
+	}
+	return &utils.PaginationResult{
+		Items:      results,
+		Pagination: utils.CalculatePagination(total, page, perPage),
+	}, nil
 }

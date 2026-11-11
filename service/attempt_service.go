@@ -10,6 +10,7 @@ import (
 	"golang-backend/dto"
 	"golang-backend/entity"
 	"golang-backend/repository"
+	"golang-backend/utils"
 
 	"gorm.io/gorm"
 )
@@ -21,6 +22,7 @@ type AttemptService interface {
 	Answer(candidateID, attemptID, questionID, selectedOptionKey string) error
 	Submit(candidateID, attemptID string) (*dto.AttemptView, error)
 	Result(candidateID, attemptID string) (*dto.AttemptResultView, error)
+	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 }
 
 type attemptService struct {
@@ -33,6 +35,10 @@ func NewAttemptService(repo repository.AttemptRepository) AttemptService {
 
 func (s *attemptService) ListSchedules(candidateID string) ([]dto.CandidateExamSchedule, error) {
 	return s.repo.ListSchedules(candidateID)
+}
+
+func (s *attemptService) ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error) {
+	return s.repo.ListAdminResults(filters, page, perPage)
 }
 
 type snapshotOption struct {

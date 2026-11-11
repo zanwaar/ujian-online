@@ -58,3 +58,20 @@ type AttemptResultView struct {
 	Score        float64    `json:"score,omitempty"`
 	ShowResult   bool       `json:"show_result"`
 }
+
+type AdminAttemptResult struct {
+	AttemptID           string     `json:"attempt_id"`
+	AttemptNumber       int        `json:"attempt_number"`
+	CandidateID         string     `json:"candidate_id"`
+	CandidateExamNumber string     `json:"candidate_exam_number"`
+	CandidateName       string     `json:"candidate_name"`
+	ExamID              string     `json:"exam_id"`
+	ExamName            string     `json:"exam_name"`
+	SessionID           string     `json:"session_id"`
+	SessionName         string     `json:"session_name"`
+	Status              string     `json:"status"`
+	StartedAt           *time.Time `json:"started_at,omitempty"`
+	SubmittedAt         *time.Time `json:"submitted_at,omitempty"`
+	CorrectCount        int        `json:"correct_count"`
+	Score               float64    `json:"score"`
+}

@@ -2,6 +2,8 @@ package controller
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"golang-backend/dto"
 	"golang-backend/service"
@@ -113,4 +115,21 @@ func (c *AttemptController) Result(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(ctx, "Attempt result loaded successfully", result)
+}
+
+func (c *AttemptController) ListAdminResults(ctx *gin.Context) {
+	page, perPage := utils.GetPaginationParams(ctx)
+	filters := map[string]string{
+		"exam_id":         strings.TrimSpace(ctx.Query("exam_id")),
+		"exam_session_id": strings.TrimSpace(ctx.Query("exam_session_id")),
+		"status":          strings.TrimSpace(ctx.Query("status")),
+		"search":          strings.TrimSpace(ctx.Query("search")),
+	}
+	startedAt := time.Now()
+	result, err := c.service.ListAdminResults(filters, page, perPage)
+	if err != nil {
+		utils.ErrorResponse(ctx, "Failed to load exam results", http.StatusInternalServerError, err.Error())
+		return
+	}
+	utils.APIResponse(ctx, "Exam results loaded successfully", http.StatusOK, result.Items, nil, utils.BuildMeta(result.Pagination, time.Since(startedAt).Seconds()))
 }
