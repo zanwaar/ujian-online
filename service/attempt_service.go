@@ -17,13 +17,14 @@ import (
 
 type AttemptService interface {
 	ListSchedules(candidateID string) ([]dto.CandidateExamSchedule, error)
-	Start(candidateID, examID string) (*dto.AttemptView, error)
+	Start(candidateID, examID string, assignmentIDs ...string) (*dto.AttemptView, error)
 	Get(candidateID, attemptID string) (*dto.AttemptView, error)
 	Answer(candidateID, attemptID, questionID, selectedOptionKey string) error
 	Submit(candidateID, attemptID string) (*dto.AttemptView, error)
 	ExpireDueAttempts(now time.Time) (int64, error)
 	Result(candidateID, attemptID string) (*dto.AttemptResultView, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
+	ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error)
 	GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error)
 }
 
@@ -41,6 +42,10 @@ func (s *attemptService) ListSchedules(candidateID string) ([]dto.CandidateExamS
 
 func (s *attemptService) ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error) {
 	return s.repo.ListAdminResults(filters, page, perPage)
+}
+
+func (s *attemptService) ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error) {
+	return s.repo.ExportAdminResults(filters)
 }
 
 func (s *attemptService) GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error) {
@@ -116,8 +121,8 @@ func shuffleOptions(randomizer *rand.Rand, options []snapshotOption, optionKeys 
 	})
 }
 
-func (s *attemptService) Start(candidateID, examID string) (*dto.AttemptView, error) {
-	context, err := s.repo.FindStartContext(candidateID, examID)
+func (s *attemptService) Start(candidateID, examID string, assignmentIDs ...string) (*dto.AttemptView, error) {
+	context, err := s.repo.FindStartContext(candidateID, examID, assignmentIDs...)
 	if err != nil {
 		return nil, errors.New("exam assignment not found")
 	}

@@ -1280,6 +1280,38 @@ paths:
       summary: List exam results
       tags:
       - admin-results
+  /v1/admin/results/export:
+    get:
+      parameters:
+      - description: Exam ID
+        in: query
+        name: exam_id
+        type: string
+      - description: Exam session ID
+        in: query
+        name: exam_session_id
+        type: string
+      - description: Attempt status
+        in: query
+        name: status
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: OK
+          schema:
+            format: binary
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Export exam results as CSV
+      tags:
+      - admin-results
   /v1/admin/results/{id}:
     get:
       parameters:
@@ -1550,6 +1582,10 @@ paths:
         in: path
         name: exam_id
         required: true
+        type: string
+      - description: Assignment ID from candidate schedule
+        in: query
+        name: assignment_id
         type: string
       produces:
       - application/json

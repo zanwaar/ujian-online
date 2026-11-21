@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"encoding/csv"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,6 +58,7 @@ func (c *AttemptController) ListSchedules(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param exam_id path string true "Exam ID"
+// @Param assignment_id query string false "Assignment ID from candidate schedule"
 // @Success 200 {object} utils.Response
 // @Router /v1/candidate/exams/{exam_id}/attempts [post]
 func (c *AttemptController) Start(ctx *gin.Context) {
@@ -64,7 +67,7 @@ func (c *AttemptController) Start(ctx *gin.Context) {
 		utils.ErrorResponse(ctx, "Unauthorized", http.StatusUnauthorized, nil)
 		return
 	}
-	attempt, err := c.service.Start(id, ctx.Param("exam_id"))
+	attempt, err := c.service.Start(id, ctx.Param("exam_id"), strings.TrimSpace(ctx.Query("assignment_id")))
 	if err != nil {
 		utils.ErrorResponse(ctx, "Failed to start exam", http.StatusBadRequest, err.Error())
 		return
@@ -189,6 +192,75 @@ func (c *AttemptController) ListAdminResults(ctx *gin.Context) {
 		return
 	}
 	utils.APIResponse(ctx, "Exam results loaded successfully", http.StatusOK, result.Items, nil, utils.BuildMeta(result.Pagination, time.Since(startedAt).Seconds()))
+}
+
+// ExportAdminResults godoc
+// @Summary Export exam results as CSV
+// @Tags admin-results
+// @Produce text/csv
+// @Security BearerAuth
+// @Param exam_id query string false "Exam ID"
+// @Param exam_session_id query string false "Exam session ID"
+// @Param status query string false "Attempt status"
+// @Param search query string false "Search term"
+// @Success 200 {file} binary
+// @Router /v1/admin/results/export [get]
+func (c *AttemptController) ExportAdminResults(ctx *gin.Context) {
+	filters := map[string]string{
+		"exam_id":         strings.TrimSpace(ctx.Query("exam_id")),
+		"exam_session_id": strings.TrimSpace(ctx.Query("exam_session_id")),
+		"status":          strings.TrimSpace(ctx.Query("status")),
+		"search":          strings.TrimSpace(ctx.Query("search")),
+	}
+	if status := filters["status"]; status != "" && status != "submitted" && status != "expired" {
+		utils.ErrorResponse(ctx, "Invalid export status", http.StatusBadRequest, "status must be submitted or expired")
+		return
+	}
+	results, err := c.service.ExportAdminResults(filters)
+	if err != nil {
+		utils.ErrorResponse(ctx, "Failed to export exam results", http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	ctx.Header("Content-Type", "text/csv; charset=utf-8")
+	ctx.Header("Content-Disposition", `attachment; filename="exam-results.csv"`)
+	writer := csv.NewWriter(ctx.Writer)
+	if err := writer.Write([]string{
+		"attempt_id", "attempt_number", "status", "candidate_id", "candidate_exam_number",
+		"candidate_name", "exam_id", "exam_name", "session_id", "session_name",
+		"started_at", "submitted_at", "correct_count", "score",
+	}); err != nil {
+		return
+	}
+	for _, result := range results {
+		startedAt := ""
+		if result.StartedAt != nil {
+			startedAt = result.StartedAt.Format(time.RFC3339)
+		}
+		submittedAt := ""
+		if result.SubmittedAt != nil {
+			submittedAt = result.SubmittedAt.Format(time.RFC3339)
+		}
+		if err := writer.Write([]string{
+			result.AttemptID,
+			strconv.Itoa(result.AttemptNumber),
+			result.Status,
+			result.CandidateID,
+			result.CandidateExamNumber,
+			result.CandidateName,
+			result.ExamID,
+			result.ExamName,
+			result.SessionID,
+			result.SessionName,
+			startedAt,
+			submittedAt,
+			strconv.Itoa(result.CorrectCount),
+			strconv.FormatFloat(result.Score, 'f', 2, 64),
+		}); err != nil {
+			return
+		}
+	}
+	writer.Flush()
 }
 
 // GetAdminResultDetail godoc

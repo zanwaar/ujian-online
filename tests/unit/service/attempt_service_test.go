@@ -18,6 +18,7 @@ import (
 type fakeAttemptRepository struct {
 	startContext           *repository.AttemptStartContext
 	startErr               error
+	startAssignmentID      string
 	activeAttempt          *entity.Attempt
 	activeErr              error
 	completedAttempt       *entity.Attempt
@@ -36,6 +37,8 @@ type fakeAttemptRepository struct {
 	resultAttempt          *entity.Attempt
 	resultShowResult       bool
 	resultErr              error
+	exportResults          []dto.AdminAttemptResult
+	exportErr              error
 	adminDetail            *repository.AdminAttemptDetailData
 	adminDetailErr         error
 }
@@ -59,7 +62,10 @@ func (f *fakeAttemptRepository) FindAdminResultDetail(string) (*repository.Admin
 	return f.adminDetail, f.adminDetailErr
 }
 
-func (f *fakeAttemptRepository) FindStartContext(string, string) (*repository.AttemptStartContext, error) {
+func (f *fakeAttemptRepository) FindStartContext(_, _ string, assignmentIDs ...string) (*repository.AttemptStartContext, error) {
+	if len(assignmentIDs) > 0 {
+		f.startAssignmentID = assignmentIDs[0]
+	}
 	return f.startContext, f.startErr
 }
 
@@ -128,6 +134,10 @@ func (f *fakeAttemptRepository) FindResultForCandidate(string, string) (*entity.
 	return f.resultAttempt, f.resultShowResult, f.resultErr
 }
 
+func (f *fakeAttemptRepository) ExportAdminResults(map[string]string) ([]dto.AdminAttemptResult, error) {
+	return f.exportResults, f.exportErr
+}
+
 func validStartContext(now time.Time) *repository.AttemptStartContext {
 	return &repository.AttemptStartContext{
 		AssignmentID:    "assignment-1",
@@ -174,6 +184,19 @@ func TestAttemptServiceStartCreatesServerTimedSnapshot(t *testing.T) {
 	}
 	if got := repo.createdQuestions[0].SnapshotContentJSON; !strings.Contains(got, `"correct_option_key":"B"`) {
 		t.Fatalf("snapshot does not preserve correct option: %s", got)
+	}
+}
+
+func TestAttemptServiceStartScopesRequestedAssignment(t *testing.T) {
+	repo := newFakeAttemptRepository()
+	repo.startContext = validStartContext(time.Now().UTC())
+	repo.questions = oneQuestion()
+
+	if _, err := service.NewAttemptService(repo).Start("candidate-1", "exam-1", "assignment-target"); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	if repo.startAssignmentID != "assignment-target" {
+		t.Fatalf("assignment id = %q, want assignment-target", repo.startAssignmentID)
 	}
 }
 
@@ -256,6 +279,29 @@ func TestAttemptServiceGetAutoSubmitsExpiredAttempt(t *testing.T) {
 	}
 }
 
+func TestAttemptServiceGetResumesActiveAttemptWithoutSubmitting(t *testing.T) {
+	deadline := time.Now().UTC().Add(time.Minute)
+	repo := newFakeAttemptRepository()
+	repo.findAttempt = &entity.Attempt{
+		Base:       entity.Base{ID: "attempt-1"},
+		ExamID:     "exam-1",
+		Status:     "in_progress",
+		DeadlineAt: &deadline,
+		Questions: []entity.AttemptQuestion{{
+			Base:                entity.Base{ID: "attempt-question-1"},
+			SnapshotContentJSON: `{"code":"Q1","content_html":"<p>2 + 2 = ?</p>","options":[{"option_key":"A","content_html":"3"},{"option_key":"B","content_html":"4"}]}`,
+		}},
+	}
+
+	view, err := service.NewAttemptService(repo).Get("candidate-1", "attempt-1")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if view.Status != "in_progress" || repo.submitCalls != 0 {
+		t.Fatalf("status = %q, submit_calls = %d; want active attempt without submit", view.Status, repo.submitCalls)
+	}
+}
+
 func TestAttemptServiceResultIncludesExamIDAndHonorsVisibility(t *testing.T) {
 	submittedAt := time.Now().UTC()
 	repo := newFakeAttemptRepository()
@@ -284,6 +330,19 @@ func TestAttemptServiceResultIncludesExamIDAndHonorsVisibility(t *testing.T) {
 	}
 	if result.ExamID != "exam-1" || result.CorrectCount != 0 || result.Score != 0 {
 		t.Fatalf("unexpected hidden result: %+v", result)
+	}
+}
+
+func TestAttemptServiceExportAdminResults(t *testing.T) {
+	repo := newFakeAttemptRepository()
+	repo.exportResults = []dto.AdminAttemptResult{{AttemptID: "attempt-1", CandidateName: "Peserta Satu", Score: 87.5}}
+
+	results, err := service.NewAttemptService(repo).ExportAdminResults(map[string]string{"exam_id": "exam-1"})
+	if err != nil {
+		t.Fatalf("ExportAdminResults() error = %v", err)
+	}
+	if len(results) != 1 || results[0].AttemptID != "attempt-1" {
+		t.Fatalf("unexpected exported results: %+v", results)
 	}
 }
 

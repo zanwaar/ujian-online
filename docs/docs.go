@@ -1406,6 +1406,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/results/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "admin-results"
+                ],
+                "summary": "Export exam results as CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Exam ID",
+                        "name": "exam_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exam session ID",
+                        "name": "exam_session_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Attempt status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search term",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string",
+                            "format": "binary"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/results/{id}": {
             "get": {
                 "security": [
@@ -1855,6 +1906,12 @@ const docTemplate = `{
                         "name": "exam_id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Assignment ID from candidate schedule",
+                        "name": "assignment_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {

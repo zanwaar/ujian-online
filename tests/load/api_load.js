@@ -1,5 +1,6 @@
 import http from "k6/http"
 import { check } from "k6"
+import { SharedArray } from "k6/data"
 
 const baseURL = __ENV.BASE_URL || "http://127.0.0.1:8080"
 const testMode = __ENV.TEST || "login"
@@ -7,6 +8,9 @@ const examNumber = __ENV.EXAM_NUMBER || "DEMO-002"
 const password = __ENV.PASSWORD || "password"
 const attemptID = __ENV.ATTEMPT_ID
 const questionID = __ENV.QUESTION_ID
+const submitCases = __ENV.SUBMIT_CASES_FILE
+  ? new SharedArray("submit cases", () => JSON.parse(open(__ENV.SUBMIT_CASES_FILE)))
+  : []
 
 export const options = {
   scenarios: {
@@ -35,6 +39,33 @@ export default function () {
     check(response, {
       "login returns 200": (result) => result.status === 200,
       "login returns token": (result) => result.body.includes('"token"'),
+    })
+    return
+  }
+
+  if (testMode === "submit") {
+    const submitCase = submitCases.length > 0
+      ? submitCases[(__VU - 1) % submitCases.length]
+      : { attemptID, token: __ENV.TOKEN }
+    if (!submitCase.attemptID || !submitCase.token) {
+      throw new Error("submit requires TOKEN and ATTEMPT_ID or SUBMIT_CASES_FILE")
+    }
+
+    const response = http.post(
+      `${baseURL}/api/v1/candidate/attempts/${submitCase.attemptID}/submit`,
+      null,
+      {
+        headers: {
+          Authorization: `Bearer ${submitCase.token}`,
+          ...(__ENV.FORWARD_CLIENT_IP === "true"
+            ? { "X-Forwarded-For": `10.0.0.${__VU}` }
+            : {}),
+        },
+      },
+    )
+    check(response, {
+      "submit returns 200": (result) => result.status === 200,
+      "submit returns success envelope": (result) => result.body.includes('"success":true'),
     })
     return
   }

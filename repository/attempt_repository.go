@@ -30,7 +30,7 @@ type AttemptStartContext struct {
 
 type AttemptRepository interface {
 	ListSchedules(candidateID string) ([]dto.CandidateExamSchedule, error)
-	FindStartContext(candidateID, examID string) (*AttemptStartContext, error)
+	FindStartContext(candidateID, examID string, assignmentIDs ...string) (*AttemptStartContext, error)
 	FindActiveAttempt(assignmentID string) (*entity.Attempt, error)
 	FindCompletedAttempt(assignmentID string) (*entity.Attempt, error)
 	CountAttempts(assignmentID string) (int64, error)
@@ -42,6 +42,7 @@ type AttemptRepository interface {
 	ExpireDueAttempts(now time.Time) (int64, error)
 	FindResultForCandidate(attemptID, candidateID string) (*entity.Attempt, bool, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
+	ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error)
 	FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error)
 }
 
@@ -94,17 +95,22 @@ func (r *attemptRepository) ListSchedules(candidateID string) ([]dto.CandidateEx
 	return deduplicated, nil
 }
 
-func (r *attemptRepository) FindStartContext(candidateID, examID string) (*AttemptStartContext, error) {
+func (r *attemptRepository) FindStartContext(candidateID, examID string, assignmentIDs ...string) (*AttemptStartContext, error) {
 	var context AttemptStartContext
-	err := r.db.Table("exam_assignments ea").
+	query := r.db.Table("exam_assignments ea").
 		Select(`ea.id AS assignment_id, e.id AS exam_id, e.name AS exam_name, e.subject,
 			e.duration_minutes, e.show_result, es.id AS session_id, es.starts_at AS session_starts_at,
 			es.ends_at AS session_ends_at, ev.id AS version_id, ev.shuffle_questions, ev.shuffle_options`).
 		Joins("JOIN exams e ON e.id = ea.exam_id AND e.deleted_at IS NULL").
 		Joins("JOIN exam_sessions es ON es.id = ea.exam_session_id AND es.deleted_at IS NULL").
 		Joins("JOIN exam_versions ev ON ev.id = e.current_version_id AND ev.deleted_at IS NULL").
-		Where("ea.candidate_id = ? AND ea.exam_id = ? AND ea.status = ?", candidateID, examID, "assigned").
-		Take(&context).Error
+		Where("ea.candidate_id = ? AND ea.exam_id = ? AND ea.status = ?", candidateID, examID, "assigned")
+	if len(assignmentIDs) > 0 && assignmentIDs[0] != "" {
+		query = query.Where("ea.id = ?", assignmentIDs[0])
+	} else {
+		query = query.Order("es.starts_at ASC, es.ends_at DESC, ea.id ASC")
+	}
+	err := query.Take(&context).Error
 	return &context, err
 }
 
@@ -374,6 +380,39 @@ func (r *attemptRepository) ListAdminResults(filters map[string]string, page, pe
 		Items:      results,
 		Pagination: utils.CalculatePagination(total, page, perPage),
 	}, nil
+}
+
+func (r *attemptRepository) ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error) {
+	query := r.db.Table("attempts a").
+		Select(`a.id AS attempt_id, a.attempt_number, a.status, a.started_at, a.submitted_at,
+			a.correct_count, a.score, c.id AS candidate_id, c.exam_number AS candidate_exam_number,
+			c.name AS candidate_name, e.id AS exam_id, e.name AS exam_name,
+			es.id AS session_id, es.name AS session_name`).
+		Joins("JOIN exam_assignments ea ON ea.id = a.assignment_id AND ea.deleted_at IS NULL").
+		Joins("JOIN candidates c ON c.id = ea.candidate_id AND c.deleted_at IS NULL").
+		Joins("JOIN exams e ON e.id = ea.exam_id AND e.deleted_at IS NULL").
+		Joins("JOIN exam_sessions es ON es.id = ea.exam_session_id AND es.deleted_at IS NULL").
+		Where("a.deleted_at IS NULL")
+
+	if status := filters["status"]; status != "" {
+		query = query.Where("a.status = ?", status)
+	} else {
+		query = query.Where("a.status IN ?", []string{"submitted", "expired"})
+	}
+	if examID := filters["exam_id"]; examID != "" {
+		query = query.Where("e.id = ?", examID)
+	}
+	if sessionID := filters["exam_session_id"]; sessionID != "" {
+		query = query.Where("es.id = ?", sessionID)
+	}
+	if search := filters["search"]; search != "" {
+		like := "%" + search + "%"
+		query = query.Where("c.exam_number ILIKE ? OR c.name ILIKE ? OR e.name ILIKE ? OR e.code ILIKE ?", like, like, like, like)
+	}
+
+	results := make([]dto.AdminAttemptResult, 0)
+	err := query.Order("COALESCE(a.submitted_at, a.started_at) DESC, a.created_at DESC").Scan(&results).Error
+	return results, err
 }
 
 func (r *attemptRepository) FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error) {
