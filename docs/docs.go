@@ -921,6 +921,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/candidates/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-candidates"
+                ],
+                "summary": "Import candidates from CSV",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/candidates/{id}": {
             "get": {
                 "security": [

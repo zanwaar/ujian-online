@@ -17,3 +17,18 @@ type UpdateCandidateRequest struct {
 	ClassName string `json:"class_name" binding:"required,max=50"`
 	Status    string `json:"status" binding:"omitempty,oneof=active inactive archived"`
 }
+
+type CandidateImportRow struct {
+	Row  int
+	Data CreateCandidateRequest
+}
+
+type CandidateImportError struct {
+	Row     int    `json:"row"`
+	Message string `json:"message"`
+}
+
+type CandidateImportResult struct {
+	Imported int                    `json:"imported"`
+	Errors   []CandidateImportError `json:"errors,omitempty"`
+}

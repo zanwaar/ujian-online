@@ -67,6 +67,7 @@ func SetupRoutes(app *gin.Engine, userCtrl *controller.UserController, roleCtrl 
 	adminV1.DELETE("/questions/:id", questionCtrl.Archive)
 	adminV1.GET("/candidates", candidateCtrl.List)
 	adminV1.POST("/candidates", candidateCtrl.Create)
+	adminV1.POST("/candidates/import", candidateCtrl.Import)
 	adminV1.GET("/candidates/:id", candidateCtrl.Get)
 	adminV1.PUT("/candidates/:id", candidateCtrl.Update)
 	adminV1.DELETE("/candidates/:id", candidateCtrl.Archive)

@@ -12,6 +12,7 @@ type CandidateRepository interface {
 	FindByID(id string) (*entity.Candidate, error)
 	FindByExamNumber(examNumber string) (*entity.Candidate, error)
 	Create(candidate *entity.Candidate) error
+	CreateBatch(candidates []entity.Candidate) error
 	Update(candidate *entity.Candidate) error
 }
 
@@ -64,6 +65,12 @@ func (r *candidateRepository) FindByExamNumber(examNumber string) (*entity.Candi
 
 func (r *candidateRepository) Create(candidate *entity.Candidate) error {
 	return r.db.Create(candidate).Error
+}
+
+func (r *candidateRepository) CreateBatch(candidates []entity.Candidate) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		return tx.Create(&candidates).Error
+	})
 }
 
 func (r *candidateRepository) Update(candidate *entity.Candidate) error {

@@ -31,6 +31,7 @@ func TestCriticalOpenAPIPaths(t *testing.T) {
 		"/v1/admin/exams":                                   {"get", "post"},
 		"/v1/admin/questions":                               {"get", "post"},
 		"/v1/admin/candidates":                              {"get", "post"},
+		"/v1/admin/candidates/import":                       {"post"},
 		"/v1/admin/assignments":                             {"get", "post"},
 		"/v1/admin/results":                                 {"get"},
 		"/v1/admin/results/export":                          {"get"},

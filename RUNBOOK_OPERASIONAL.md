@@ -155,3 +155,28 @@ Endpoint ini memakai filter yang sama dan menghasilkan satu baris per soal,
 termasuk identitas peserta, soal, jawaban terpilih, kunci jawaban, status benar,
 serta timestamp jawaban. Konten HTML soal dan opsi dipertahankan agar format
 rich text tidak hilang saat diproses lebih lanjut.
+
+## Import Peserta CSV
+
+Halaman admin **Peserta ujian** menyediakan tombol **Import CSV**. File harus
+memiliki header berikut:
+
+```text
+exam_number,password,name,gender,school,class_name
+```
+
+Endpoint langsungnya adalah:
+
+```text
+POST /api/v1/admin/candidates/import
+```
+
+Kirim file sebagai field multipart bernama `file`. Ukuran file dibatasi 5 MiB.
+Nilai `gender` harus `L` atau `P`; nomor ujian harus unik; password harus
+memiliki panjang 6 sampai 100 karakter. Validasi dilakukan terhadap seluruh
+file sebelum batch disimpan, sehingga satu baris invalid tidak meninggalkan
+sebagian peserta di database. Password di-hash dan tidak pernah dimasukkan ke
+response atau log.
+
+Format Excel belum diaktifkan; konversi workbook ke CSV dapat digunakan sebagai
+workaround operasional sementara.

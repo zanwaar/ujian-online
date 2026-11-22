@@ -983,6 +983,28 @@ paths:
       summary: Create candidate
       tags:
       - admin-candidates
+  /v1/admin/candidates/import:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Import candidates from CSV
+      tags:
+      - admin-candidates
   /v1/admin/candidates/{id}:
     delete:
       parameters:
