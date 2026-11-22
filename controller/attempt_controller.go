@@ -194,18 +194,7 @@ func (c *AttemptController) ListAdminResults(ctx *gin.Context) {
 	utils.APIResponse(ctx, "Exam results loaded successfully", http.StatusOK, result.Items, nil, utils.BuildMeta(result.Pagination, time.Since(startedAt).Seconds()))
 }
 
-// ExportAdminResults godoc
-// @Summary Export exam results as CSV
-// @Tags admin-results
-// @Produce text/csv
-// @Security BearerAuth
-// @Param exam_id query string false "Exam ID"
-// @Param exam_session_id query string false "Exam session ID"
-// @Param status query string false "Attempt status"
-// @Param search query string false "Search term"
-// @Success 200 {file} binary
-// @Router /v1/admin/results/export [get]
-func (c *AttemptController) ExportAdminResults(ctx *gin.Context) {
+func adminExportFilters(ctx *gin.Context) (map[string]string, bool) {
 	filters := map[string]string{
 		"exam_id":         strings.TrimSpace(ctx.Query("exam_id")),
 		"exam_session_id": strings.TrimSpace(ctx.Query("exam_session_id")),
@@ -214,6 +203,25 @@ func (c *AttemptController) ExportAdminResults(ctx *gin.Context) {
 	}
 	if status := filters["status"]; status != "" && status != "submitted" && status != "expired" {
 		utils.ErrorResponse(ctx, "Invalid export status", http.StatusBadRequest, "status must be submitted or expired")
+		return nil, false
+	}
+	return filters, true
+}
+
+// ExportAdminResults godoc
+// @Summary Export exam results as CSV
+// @Tags admin-results
+// @Produce text/csv
+// @Security BearerAuth
+// @Param exam_id query string false "Exam ID"
+// @Param exam_session_id query string false "Exam session ID"
+// @Param status query string false "Attempt status (submitted or expired)"
+// @Param search query string false "Search term"
+// @Success 200 {file} binary
+// @Router /v1/admin/results/export [get]
+func (c *AttemptController) ExportAdminResults(ctx *gin.Context) {
+	filters, ok := adminExportFilters(ctx)
+	if !ok {
 		return
 	}
 	results, err := c.service.ExportAdminResults(filters)
@@ -256,6 +264,83 @@ func (c *AttemptController) ExportAdminResults(ctx *gin.Context) {
 			submittedAt,
 			strconv.Itoa(result.CorrectCount),
 			strconv.FormatFloat(result.Score, 'f', 2, 64),
+		}); err != nil {
+			return
+		}
+	}
+	writer.Flush()
+}
+
+// ExportAdminAnswers godoc
+// @Summary Export exam answers as CSV
+// @Tags admin-results
+// @Produce text/csv
+// @Security BearerAuth
+// @Param exam_id query string false "Exam ID"
+// @Param exam_session_id query string false "Exam session ID"
+// @Param status query string false "Attempt status (submitted or expired)"
+// @Param search query string false "Search term"
+// @Success 200 {file} binary
+// @Router /v1/admin/results/answers/export [get]
+func (c *AttemptController) ExportAdminAnswers(ctx *gin.Context) {
+	filters, ok := adminExportFilters(ctx)
+	if !ok {
+		return
+	}
+	answers, err := c.service.ExportAdminAnswers(filters)
+	if err != nil {
+		utils.ErrorResponse(ctx, "Failed to export exam answers", http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	ctx.Header("Content-Type", "text/csv; charset=utf-8")
+	ctx.Header("Content-Disposition", `attachment; filename="exam-answers.csv"`)
+	writer := csv.NewWriter(ctx.Writer)
+	if err := writer.Write([]string{
+		"attempt_id", "attempt_number", "status", "candidate_id", "candidate_exam_number",
+		"candidate_name", "exam_id", "exam_name", "session_id", "session_name",
+		"question_id", "sequence_number", "question_code", "question_content_html",
+		"selected_option_key", "selected_option_content_html", "correct_option_key",
+		"correct_option_content_html", "started_at", "submitted_at", "answered_at", "is_correct",
+	}); err != nil {
+		return
+	}
+	for _, answer := range answers {
+		startedAt := ""
+		if answer.StartedAt != nil {
+			startedAt = answer.StartedAt.Format(time.RFC3339)
+		}
+		submittedAt := ""
+		if answer.SubmittedAt != nil {
+			submittedAt = answer.SubmittedAt.Format(time.RFC3339)
+		}
+		answeredAt := ""
+		if answer.AnsweredAt != nil {
+			answeredAt = answer.AnsweredAt.Format(time.RFC3339)
+		}
+		if err := writer.Write([]string{
+			answer.AttemptID,
+			strconv.Itoa(answer.AttemptNumber),
+			answer.Status,
+			answer.CandidateID,
+			answer.CandidateExamNumber,
+			answer.CandidateName,
+			answer.ExamID,
+			answer.ExamName,
+			answer.SessionID,
+			answer.SessionName,
+			answer.QuestionID,
+			strconv.Itoa(answer.SequenceNumber),
+			answer.QuestionCode,
+			answer.QuestionContentHTML,
+			answer.SelectedOptionKey,
+			answer.SelectedOptionContentHTML,
+			answer.CorrectOptionKey,
+			answer.CorrectOptionContentHTML,
+			startedAt,
+			submittedAt,
+			answeredAt,
+			strconv.FormatBool(answer.IsCorrect),
 		}); err != nil {
 			return
 		}

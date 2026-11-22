@@ -98,3 +98,28 @@ type AdminAttemptDetail struct {
 	AdminAttemptResult
 	Questions []AdminAttemptQuestionDetail `json:"questions"`
 }
+
+type AdminAnswerExportRow struct {
+	AttemptID                 string     `json:"attempt_id"`
+	AttemptNumber             int        `json:"attempt_number"`
+	Status                    string     `json:"status"`
+	CandidateID               string     `json:"candidate_id"`
+	CandidateExamNumber       string     `json:"candidate_exam_number"`
+	CandidateName             string     `json:"candidate_name"`
+	ExamID                    string     `json:"exam_id"`
+	ExamName                  string     `json:"exam_name"`
+	SessionID                 string     `json:"session_id"`
+	SessionName               string     `json:"session_name"`
+	QuestionID                string     `json:"question_id"`
+	SequenceNumber            int        `json:"sequence_number"`
+	QuestionCode              string     `json:"question_code,omitempty"`
+	QuestionContentHTML       string     `json:"question_content_html"`
+	SelectedOptionKey         string     `json:"selected_option_key,omitempty"`
+	SelectedOptionContentHTML string     `json:"selected_option_content_html,omitempty"`
+	CorrectOptionKey          string     `json:"correct_option_key"`
+	CorrectOptionContentHTML  string     `json:"correct_option_content_html,omitempty"`
+	StartedAt                 *time.Time `json:"started_at,omitempty"`
+	SubmittedAt               *time.Time `json:"submitted_at,omitempty"`
+	AnsweredAt                *time.Time `json:"answered_at,omitempty"`
+	IsCorrect                 bool       `json:"is_correct"`
+}

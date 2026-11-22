@@ -76,6 +76,7 @@ func SetupRoutes(app *gin.Engine, userCtrl *controller.UserController, roleCtrl 
 	adminV1.DELETE("/assignments/:id", assignmentCtrl.Archive)
 	adminV1.GET("/results", attemptCtrl.ListAdminResults)
 	adminV1.GET("/results/export", attemptCtrl.ExportAdminResults)
+	adminV1.GET("/results/answers/export", attemptCtrl.ExportAdminAnswers)
 	adminV1.GET("/results/:id", attemptCtrl.GetAdminResultDetail)
 
 	candidateV1 := apiV1.Group("/candidate")

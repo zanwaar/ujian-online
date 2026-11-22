@@ -43,6 +43,7 @@ type AttemptRepository interface {
 	FindResultForCandidate(attemptID, candidateID string) (*entity.Attempt, bool, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 	ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error)
+	ExportAdminAnswers(filters map[string]string) ([]AdminAnswerExportData, error)
 	FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error)
 }
 
@@ -50,6 +51,27 @@ type AdminAttemptDetailData struct {
 	Result    dto.AdminAttemptResult
 	Questions []entity.AttemptQuestion
 	Answers   []entity.AttemptAnswer
+}
+
+type AdminAnswerExportData struct {
+	AttemptID           string     `gorm:"column:attempt_id"`
+	AttemptNumber       int        `gorm:"column:attempt_number"`
+	Status              string     `gorm:"column:status"`
+	CandidateID         string     `gorm:"column:candidate_id"`
+	CandidateExamNumber string     `gorm:"column:candidate_exam_number"`
+	CandidateName       string     `gorm:"column:candidate_name"`
+	ExamID              string     `gorm:"column:exam_id"`
+	ExamName            string     `gorm:"column:exam_name"`
+	SessionID           string     `gorm:"column:session_id"`
+	SessionName         string     `gorm:"column:session_name"`
+	StartedAt           *time.Time `gorm:"column:started_at"`
+	SubmittedAt         *time.Time `gorm:"column:submitted_at"`
+	QuestionID          string     `gorm:"column:question_id"`
+	SequenceNumber      int        `gorm:"column:sequence_number"`
+	SnapshotContentJSON string     `gorm:"column:snapshot_content_json"`
+	SelectedOptionKey   string     `gorm:"column:selected_option_key"`
+	AnsweredAt          *time.Time `gorm:"column:answered_at"`
+	IsCorrect           bool       `gorm:"column:is_correct"`
 }
 
 type attemptRepository struct {
@@ -413,6 +435,43 @@ func (r *attemptRepository) ExportAdminResults(filters map[string]string) ([]dto
 	results := make([]dto.AdminAttemptResult, 0)
 	err := query.Order("COALESCE(a.submitted_at, a.started_at) DESC, a.created_at DESC").Scan(&results).Error
 	return results, err
+}
+
+func (r *attemptRepository) ExportAdminAnswers(filters map[string]string) ([]AdminAnswerExportData, error) {
+	query := r.db.Table("attempts a").
+		Select(`a.id AS attempt_id, a.attempt_number, a.status, a.started_at, a.submitted_at,
+			c.id AS candidate_id, c.exam_number AS candidate_exam_number, c.name AS candidate_name,
+			e.id AS exam_id, e.name AS exam_name, es.id AS session_id, es.name AS session_name,
+			aq.id AS question_id, aq.sequence_number, aq.snapshot_content_json,
+			COALESCE(aa.selected_option_key, '') AS selected_option_key, aa.answered_at,
+			COALESCE(aa.is_correct, false) AS is_correct`).
+		Joins("JOIN exam_assignments ea ON ea.id = a.assignment_id AND ea.deleted_at IS NULL").
+		Joins("JOIN candidates c ON c.id = ea.candidate_id AND c.deleted_at IS NULL").
+		Joins("JOIN exams e ON e.id = ea.exam_id AND e.deleted_at IS NULL").
+		Joins("JOIN exam_sessions es ON es.id = ea.exam_session_id AND es.deleted_at IS NULL").
+		Joins("JOIN attempt_questions aq ON aq.attempt_id = a.id AND aq.deleted_at IS NULL").
+		Joins("LEFT JOIN attempt_answers aa ON aa.attempt_question_id = aq.id AND aa.deleted_at IS NULL").
+		Where("a.deleted_at IS NULL")
+
+	if status := filters["status"]; status != "" {
+		query = query.Where("a.status = ?", status)
+	} else {
+		query = query.Where("a.status IN ?", []string{"submitted", "expired"})
+	}
+	if examID := filters["exam_id"]; examID != "" {
+		query = query.Where("e.id = ?", examID)
+	}
+	if sessionID := filters["exam_session_id"]; sessionID != "" {
+		query = query.Where("es.id = ?", sessionID)
+	}
+	if search := filters["search"]; search != "" {
+		like := "%" + search + "%"
+		query = query.Where("c.exam_number ILIKE ? OR c.name ILIKE ? OR e.name ILIKE ? OR e.code ILIKE ?", like, like, like, like)
+	}
+
+	answers := make([]AdminAnswerExportData, 0)
+	err := query.Order("COALESCE(a.submitted_at, a.started_at) DESC, a.created_at DESC, aq.sequence_number ASC").Scan(&answers).Error
+	return answers, err
 }
 
 func (r *attemptRepository) FindAdminResultDetail(attemptID string) (*AdminAttemptDetailData, error) {

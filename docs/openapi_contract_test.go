@@ -33,6 +33,8 @@ func TestCriticalOpenAPIPaths(t *testing.T) {
 		"/v1/admin/candidates":                              {"get", "post"},
 		"/v1/admin/assignments":                             {"get", "post"},
 		"/v1/admin/results":                                 {"get"},
+		"/v1/admin/results/export":                          {"get"},
+		"/v1/admin/results/answers/export":                  {"get"},
 		"/v1/admin/results/{id}":                            {"get"},
 	}
 

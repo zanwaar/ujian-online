@@ -143,3 +143,15 @@ berakhir (`expired`); attempt aktif dan assignment yang belum dikerjakan tidak
 ikut diekspor. Kolom yang tersedia meliputi identitas attempt, peserta, ujian,
 sesi, waktu mulai/kirim, jumlah benar, dan nilai. Token, password, serta
 jawaban plaintext tidak pernah dimasukkan ke CSV.
+
+Export jawaban tersedia melalui tombol **Export Jawaban** pada halaman yang
+sama atau endpoint langsung:
+
+```text
+GET /api/v1/admin/results/answers/export
+```
+
+Endpoint ini memakai filter yang sama dan menghasilkan satu baris per soal,
+termasuk identitas peserta, soal, jawaban terpilih, kunci jawaban, status benar,
+serta timestamp jawaban. Konten HTML soal dan opsi dipertahankan agar format
+rich text tidak hilang saat diproses lebih lanjut.

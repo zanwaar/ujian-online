@@ -39,6 +39,8 @@ type fakeAttemptRepository struct {
 	resultErr              error
 	exportResults          []dto.AdminAttemptResult
 	exportErr              error
+	exportAnswers          []repository.AdminAnswerExportData
+	exportAnswersErr       error
 	adminDetail            *repository.AdminAttemptDetailData
 	adminDetailErr         error
 }
@@ -136,6 +138,10 @@ func (f *fakeAttemptRepository) FindResultForCandidate(string, string) (*entity.
 
 func (f *fakeAttemptRepository) ExportAdminResults(map[string]string) ([]dto.AdminAttemptResult, error) {
 	return f.exportResults, f.exportErr
+}
+
+func (f *fakeAttemptRepository) ExportAdminAnswers(map[string]string) ([]repository.AdminAnswerExportData, error) {
+	return f.exportAnswers, f.exportAnswersErr
 }
 
 func validStartContext(now time.Time) *repository.AttemptStartContext {
@@ -343,6 +349,33 @@ func TestAttemptServiceExportAdminResults(t *testing.T) {
 	}
 	if len(results) != 1 || results[0].AttemptID != "attempt-1" {
 		t.Fatalf("unexpected exported results: %+v", results)
+	}
+}
+
+func TestAttemptServiceExportAdminAnswersUsesSnapshotContent(t *testing.T) {
+	repo := newFakeAttemptRepository()
+	repo.exportAnswers = []repository.AdminAnswerExportData{{
+		AttemptID:           "attempt-1",
+		AttemptNumber:       1,
+		Status:              "submitted",
+		CandidateName:       "Peserta Satu",
+		QuestionID:          "attempt-question-1",
+		SequenceNumber:      1,
+		SnapshotContentJSON: `{"code":"Q1","content_html":"<p>2 + 2 = ?</p>","correct_option_key":"B","options":[{"option_key":"A","content_html":"3"},{"option_key":"B","content_html":"4"}]}`,
+		SelectedOptionKey:   "B",
+		IsCorrect:           true,
+	}}
+
+	answers, err := service.NewAttemptService(repo).ExportAdminAnswers(map[string]string{"exam_id": "exam-1"})
+	if err != nil {
+		t.Fatalf("ExportAdminAnswers() error = %v", err)
+	}
+	if len(answers) != 1 {
+		t.Fatalf("answers length = %d, want 1", len(answers))
+	}
+	answer := answers[0]
+	if answer.QuestionCode != "Q1" || answer.SelectedOptionContentHTML != "4" || answer.CorrectOptionContentHTML != "4" || !answer.IsCorrect {
+		t.Fatalf("unexpected exported answer: %+v", answer)
 	}
 }
 

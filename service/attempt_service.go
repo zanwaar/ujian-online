@@ -25,6 +25,7 @@ type AttemptService interface {
 	Result(candidateID, attemptID string) (*dto.AttemptResultView, error)
 	ListAdminResults(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 	ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error)
+	ExportAdminAnswers(filters map[string]string) ([]dto.AdminAnswerExportRow, error)
 	GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error)
 }
 
@@ -46,6 +47,57 @@ func (s *attemptService) ListAdminResults(filters map[string]string, page, perPa
 
 func (s *attemptService) ExportAdminResults(filters map[string]string) ([]dto.AdminAttemptResult, error) {
 	return s.repo.ExportAdminResults(filters)
+}
+
+func (s *attemptService) ExportAdminAnswers(filters map[string]string) ([]dto.AdminAnswerExportRow, error) {
+	data, err := s.repo.ExportAdminAnswers(filters)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([]dto.AdminAnswerExportRow, 0, len(data))
+	for _, item := range data {
+		var snapshot questionSnapshot
+		if err := json.Unmarshal([]byte(item.SnapshotContentJSON), &snapshot); err != nil {
+			return nil, errors.New("failed to decode attempt question snapshot")
+		}
+
+		selectedContent := ""
+		correctContent := ""
+		for _, option := range snapshot.Options {
+			if option.OptionKey == item.SelectedOptionKey {
+				selectedContent = option.ContentHTML
+			}
+			if option.OptionKey == snapshot.CorrectOptionKey {
+				correctContent = option.ContentHTML
+			}
+		}
+		rows = append(rows, dto.AdminAnswerExportRow{
+			AttemptID:                 item.AttemptID,
+			AttemptNumber:             item.AttemptNumber,
+			Status:                    item.Status,
+			CandidateID:               item.CandidateID,
+			CandidateExamNumber:       item.CandidateExamNumber,
+			CandidateName:             item.CandidateName,
+			ExamID:                    item.ExamID,
+			ExamName:                  item.ExamName,
+			SessionID:                 item.SessionID,
+			SessionName:               item.SessionName,
+			QuestionID:                item.QuestionID,
+			SequenceNumber:            item.SequenceNumber,
+			QuestionCode:              snapshot.Code,
+			QuestionContentHTML:       snapshot.ContentHTML,
+			SelectedOptionKey:         item.SelectedOptionKey,
+			SelectedOptionContentHTML: selectedContent,
+			CorrectOptionKey:          snapshot.CorrectOptionKey,
+			CorrectOptionContentHTML:  correctContent,
+			StartedAt:                 item.StartedAt,
+			SubmittedAt:               item.SubmittedAt,
+			AnsweredAt:                item.AnsweredAt,
+			IsCorrect:                 item.IsCorrect,
+		})
+	}
+	return rows, nil
 }
 
 func (s *attemptService) GetAdminResultDetail(attemptID string) (*dto.AdminAttemptDetail, error) {
