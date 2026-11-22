@@ -201,3 +201,8 @@ POST /api/v1/admin/questions/import
 
 Kirim file sebagai field multipart bernama `file`. Format Excel belum diaktifkan;
 konversi workbook ke CSV dapat digunakan sebagai workaround operasional sementara.
+
+File contoh tersedia di `docs/import-examples/`:
+
+- `candidates.csv` untuk peserta.
+- `questions.csv` untuk soal; ganti `REPLACE_WITH_EXAM_VERSION_ID` sebelum upload.

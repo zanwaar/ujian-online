@@ -1,0 +1,3 @@
+exam_version_id,code,content_html,weight,display_order,option_a,option_b,option_c,option_d,option_e,correct_option_key
+REPLACE_WITH_EXAM_VERSION_ID,CONTOH-Q-001,"<p>Hasil dari 2 + 3 adalah ...</p>",1,1,"<p>4</p>","<p>5</p>","<p>6</p>","<p>7</p>",,B
+REPLACE_WITH_EXAM_VERSION_ID,CONTOH-Q-002,"<p>HTTP method yang umum digunakan untuk membaca data adalah ...</p>",1,2,"<p>POST</p>","<p>PUT</p>","<p>GET</p>","<p>DELETE</p>",,C
