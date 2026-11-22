@@ -62,6 +62,7 @@ func SetupRoutes(app *gin.Engine, userCtrl *controller.UserController, roleCtrl 
 	adminV1.DELETE("/sessions/:id", sessionCtrl.Archive)
 	adminV1.GET("/questions", questionCtrl.List)
 	adminV1.POST("/questions", questionCtrl.Create)
+	adminV1.POST("/questions/import", questionCtrl.Import)
 	adminV1.GET("/questions/:id", questionCtrl.Get)
 	adminV1.PUT("/questions/:id", questionCtrl.Update)
 	adminV1.DELETE("/questions/:id", questionCtrl.Archive)

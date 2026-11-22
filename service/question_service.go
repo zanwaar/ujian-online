@@ -15,6 +15,7 @@ type QuestionService interface {
 	List(filters map[string]string, page, perPage int) (*utils.PaginationResult, error)
 	Get(id string) (*entity.Question, error)
 	Create(req dto.CreateQuestionRequest) (*entity.Question, error)
+	Import(rows []dto.QuestionImportRow) (*dto.QuestionImportResult, error)
 	Update(id string, req dto.UpdateQuestionRequest) (*entity.Question, error)
 	Archive(id string) error
 }
@@ -102,6 +103,65 @@ func (s *questionService) Create(req dto.CreateQuestionRequest) (*entity.Questio
 	}
 	question.Options = options
 	return question, nil
+}
+
+func (s *questionService) Import(rows []dto.QuestionImportRow) (*dto.QuestionImportResult, error) {
+	result := &dto.QuestionImportResult{Errors: make([]dto.QuestionImportError, 0)}
+	if len(rows) == 0 {
+		return nil, errors.New("no question rows found")
+	}
+
+	questions := make([]entity.Question, 0, len(rows))
+	for _, row := range rows {
+		request := row.Data
+		request.ExamVersionID = strings.TrimSpace(request.ExamVersionID)
+		request.Code = strings.TrimSpace(request.Code)
+		request.ContentHTML = strings.TrimSpace(request.ContentHTML)
+		message := ""
+		if request.ExamVersionID == "" {
+			message = "exam_version_id is required"
+		} else if request.Weight <= 0 {
+			message = "weight must be greater than zero"
+		} else if request.DisplayOrder <= 0 {
+			message = "display_order must be greater than zero"
+		} else if strings.TrimSpace(utils.SanitizeHTML(request.ContentHTML)) == "" {
+			message = "content_html is required"
+		} else {
+			exists, err := s.repo.ExamVersionExists(request.ExamVersionID)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				message = "exam version not found"
+			}
+		}
+
+		options, optionsErr := validateQuestionOptions(request.Options)
+		if message == "" && optionsErr != nil {
+			message = optionsErr.Error()
+		}
+		if message != "" {
+			result.Errors = append(result.Errors, dto.QuestionImportError{Row: row.Row, Message: message})
+			continue
+		}
+		questions = append(questions, entity.Question{
+			ExamVersionID: request.ExamVersionID,
+			Code:          request.Code,
+			ContentHTML:   utils.SanitizeHTML(request.ContentHTML),
+			Weight:        request.Weight,
+			DisplayOrder:  request.DisplayOrder,
+			Status:        "active",
+			Options:       options,
+		})
+	}
+	if len(result.Errors) > 0 {
+		return result, nil
+	}
+	if err := s.repo.CreateBatchWithOptions(questions); err != nil {
+		return nil, err
+	}
+	result.Imported = len(questions)
+	return result, nil
 }
 
 func (s *questionService) Update(id string, req dto.UpdateQuestionRequest) (*entity.Question, error) {

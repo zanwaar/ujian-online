@@ -178,5 +178,26 @@ file sebelum batch disimpan, sehingga satu baris invalid tidak meninggalkan
 sebagian peserta di database. Password di-hash dan tidak pernah dimasukkan ke
 response atau log.
 
-Format Excel belum diaktifkan; konversi workbook ke CSV dapat digunakan sebagai
-workaround operasional sementara.
+## Import Soal CSV
+
+Halaman admin **Soal dan pilihan jawaban** menyediakan tombol **Import CSV**.
+File harus memiliki header berikut:
+
+```text
+exam_version_id,code,content_html,weight,display_order,option_a,option_b,option_c,option_d,option_e,correct_option_key
+```
+
+`option_a` dan `option_b` wajib diisi; `option_c`, `option_d`, dan `option_e`
+boleh kosong. `correct_option_key` harus menunjuk tepat satu opsi yang terisi.
+Konten HTML akan disanitasi sebelum disimpan. Ukuran file dibatasi 5 MiB dan
+seluruh baris divalidasi lebih dulu, sehingga baris invalid tidak meninggalkan
+sebagian soal di database.
+
+Endpoint langsungnya adalah:
+
+```text
+POST /api/v1/admin/questions/import
+```
+
+Kirim file sebagai field multipart bernama `file`. Format Excel belum diaktifkan;
+konversi workbook ke CSV dapat digunakan sebagai workaround operasional sementara.

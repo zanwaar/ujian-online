@@ -1222,6 +1222,28 @@ paths:
       summary: Create question
       tags:
       - admin-questions
+  /v1/admin/questions/import:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Import questions from CSV
+      tags:
+      - admin-questions
   /v1/admin/questions/{id}:
     delete:
       parameters:

@@ -68,6 +68,10 @@ func (f *sanitizationQuestionRepository) CreateWithOptions(question *entity.Ques
 	return nil
 }
 
+func (f *sanitizationQuestionRepository) CreateBatchWithOptions([]entity.Question) error {
+	return nil
+}
+
 func (f *sanitizationQuestionRepository) UpdateWithOptions(*entity.Question, []entity.QuestionOption) error {
 	return nil
 }

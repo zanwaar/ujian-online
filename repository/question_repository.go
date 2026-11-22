@@ -12,6 +12,7 @@ type QuestionRepository interface {
 	FindByID(id string) (*entity.Question, error)
 	ExamVersionExists(versionID string) (bool, error)
 	CreateWithOptions(question *entity.Question, options []entity.QuestionOption) error
+	CreateBatchWithOptions(questions []entity.Question) error
 	UpdateWithOptions(question *entity.Question, options []entity.QuestionOption) error
 	Delete(question *entity.Question) error
 }
@@ -75,6 +76,24 @@ func (r *questionRepository) CreateWithOptions(question *entity.Question, option
 			options[index].QuestionID = question.ID
 			if err := tx.Create(&options[index]).Error; err != nil {
 				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *questionRepository) CreateBatchWithOptions(questions []entity.Question) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for index := range questions {
+			question := &questions[index]
+			if err := tx.Create(question).Error; err != nil {
+				return err
+			}
+			for optionIndex := range question.Options {
+				question.Options[optionIndex].QuestionID = question.ID
+				if err := tx.Create(&question.Options[optionIndex]).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil

@@ -24,3 +24,18 @@ type UpdateQuestionRequest struct {
 	Status       string                  `json:"status" binding:"omitempty,oneof=active archived"`
 	Options      []QuestionOptionRequest `json:"options" binding:"required,min=2,max=5"`
 }
+
+type QuestionImportRow struct {
+	Row  int
+	Data CreateQuestionRequest
+}
+
+type QuestionImportError struct {
+	Row     int    `json:"row"`
+	Message string `json:"message"`
+}
+
+type QuestionImportResult struct {
+	Imported int                   `json:"imported"`
+	Errors   []QuestionImportError `json:"errors,omitempty"`
+}
